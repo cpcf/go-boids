@@ -44,12 +44,20 @@ func (point Point) Limit(lower, upper float64) Point {
 
 // Calculates the distance between two points
 func (p1 Point) Distance(p2 Point) float64 {
-	return math.Sqrt(math.Pow(p1.x-p2.x, 2) + math.Pow(p1.y-p2.y, 2))
+	return math.Sqrt(p1.distanceSquared(p2))
+}
+
+func (p1 Point) distanceSquared(p2 Point) float64 {
+	return p1.Subtract(p2).magnitudeSquared()
+}
+
+func (point Point) magnitudeSquared() float64 {
+	return point.x*point.x + point.y*point.y
 }
 
 // Normalize returns a new point with the same direction but with a magnitude of 1
 func (p1 Point) Normalize() Point {
-	magnitude := math.Sqrt(math.Pow(p1.x, 2) + math.Pow(p1.y, 2))
+	magnitude := math.Sqrt(p1.magnitudeSquared())
 	return Point{x: math.Floor(p1.x/magnitude + 0.5), y: math.Floor(p1.y/magnitude + 0.5)}
 }
 

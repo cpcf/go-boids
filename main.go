@@ -24,14 +24,17 @@ func main() {
 var fps = 120
 var bouncey = true
 var clampMinSpeed = true
+var cellsPerBoid = defaultCellsPerBoid
 
 var radius = 7.0
-var maxSpeed = 0.5
+var maxSpeed = 1.0
 var adjustRate = 0.025
 var alignmentRate = 1.0
 var cohesionRate = 1.0
 var separationRate = 1.0
-var targetMinSpeed = 0.01
+var targetMinSpeed = 0.05
+
+const defaultCellsPerBoid = 75
 
 func updateVars() {
 	if err := godotenv.Overload(); err != nil {
@@ -42,6 +45,7 @@ func updateVars() {
 		"FPS":              &fps,
 		"BOUNCE":           &bouncey,
 		"CLAMP_MIN_SPEED":  &clampMinSpeed,
+		"CELLS_PER_BOID":   &cellsPerBoid,
 		"RADIUS":           &radius,
 		"MAX_SPEED":        &maxSpeed,
 		"ADJUST_RATE":      &adjustRate,
@@ -62,5 +66,9 @@ func updateVars() {
 				*p, _ = strconv.ParseFloat(v, 64)
 			}
 		}
+	}
+
+	if cellsPerBoid <= 0 {
+		cellsPerBoid = defaultCellsPerBoid
 	}
 }

@@ -1,13 +1,14 @@
 package main
 
 import (
-	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type frameMsg struct{}
+
+const spatialGridBoidThreshold = 128
 
 func animate() tea.Cmd {
 	return tea.Tick(time.Second/time.Duration(fps), func(_ time.Time) tea.Msg {
@@ -16,8 +17,11 @@ func animate() tea.Cmd {
 }
 
 type model struct {
-	cells cellbuffer
-	boids []boid
+	cells            cellbuffer
+	boids            []boid
+	previousBoids    []boid
+	nearbyGrid       spatialGrid
+	candidateIndexes []int
 }
 
 func (m model) Init() tea.Cmd {
@@ -50,15 +54,27 @@ func (m model) View() string {
 	return m.cells.String()
 }
 
-func (m model) updateBoids() {
-	var wg sync.WaitGroup
+func (m *model) updateBoids() {
+	m.previousBoids = append(m.previousBoids[:0], m.boids...)
+
+	if len(m.previousBoids) < spatialGridBoidThreshold {
+		for i := range m.boids {
+			m.boids[i].update(m.previousBoids)
+		}
+	} else {
+		m.nearbyGrid.cellSize = radius
+		m.nearbyGrid.rebuild(m.previousBoids)
+		if cap(m.candidateIndexes) < len(m.previousBoids) {
+			m.candidateIndexes = make([]int, 0, len(m.previousBoids))
+		}
+
+		for i := range m.boids {
+			m.candidateIndexes = m.nearbyGrid.candidateIndexes(m.previousBoids[i].pos, m.candidateIndexes)
+			m.boids[i].updateWithCandidateIndexes(m.previousBoids, m.candidateIndexes)
+		}
+	}
+
 	for i := range m.boids {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
-			m.boids[i].update(m.boids)
-		}(i)
-		wg.Wait()
 		m.boids[i].move()
 		drawTriangle(&m.cells, m.boids[i].pos, m.boids[i].forward)
 	}
@@ -68,13 +84,13 @@ func drawTriangle(cb *cellbuffer, centre, dir Point) {
 	cb.set(int(centre.x), int(centre.y), triangleRuneTable[dir])
 }
 
-var triangleRuneTable = map[Point]string{
-	{-1, -1}: "◤",
-	{-1, 0}:  "◀",
-	{-1, 1}:  "◣",
-	{0, 1}:   "▼",
-	{1, 1}:   "◢",
-	{1, 0}:   "▶",
-	{1, -1}:  "◥",
-	{0, -1}:  "▲",
+var triangleRuneTable = map[Point]rune{
+	{-1, -1}: '◤',
+	{-1, 0}:  '◀',
+	{-1, 1}:  '◣',
+	{0, 1}:   '▼',
+	{1, 1}:   '◢',
+	{1, 0}:   '▶',
+	{1, -1}:  '◥',
+	{0, -1}:  '▲',
 }

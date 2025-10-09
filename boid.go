@@ -1,6 +1,9 @@
 package main
 
-import "math/rand/v2"
+import (
+	"math"
+	"math/rand/v2"
+)
 
 type boid struct {
 	pos           Point
@@ -13,8 +16,15 @@ type boid struct {
 }
 
 func initBoidsOnScreenSize(screenWidth, screenHeight int) []boid {
-	count := screenWidth*screenHeight/125 + 1
+	count := screenWidth*screenHeight/effectiveCellsPerBoid() + 1
 	return initRandomBoids(count, screenWidth, screenHeight)
+}
+
+func effectiveCellsPerBoid() int {
+	if cellsPerBoid <= 0 {
+		return defaultCellsPerBoid
+	}
+	return cellsPerBoid
 }
 
 func initRandomBoids(count int, screenWidth, screenHeight int) []boid {
@@ -39,9 +49,16 @@ func initRandomBoids(count int, screenWidth, screenHeight int) []boid {
 }
 
 func (b *boid) update(boids []boid) {
-
 	accel := b.calcAcceleration(boids)
+	b.applyAcceleration(accel)
+}
 
+func (b *boid) updateWithCandidateIndexes(boids []boid, candidateIndexes []int) {
+	accel := b.calcAccelerationWithCandidateIndexes(boids, candidateIndexes)
+	b.applyAcceleration(accel)
+}
+
+func (b *boid) applyAcceleration(accel Point) {
 	b.vel = b.vel.Add(accel).Limit(-maxSpeed, maxSpeed)
 
 	if b.clampMinSpeed {
@@ -87,14 +104,20 @@ func (b *boid) move() {
 }
 
 func (b *boid) calcAcceleration(boids []boid) Point {
+	sep, avgPos, avgVel, count := b.measureNearby(boids)
+	return b.calcAccelerationFromNearby(sep, avgPos, avgVel, count)
+}
+
+func (b *boid) calcAccelerationWithCandidateIndexes(boids []boid, candidateIndexes []int) Point {
+	sep, avgPos, avgVel, count := b.measureNearbyCandidateIndexes(boids, candidateIndexes)
+	return b.calcAccelerationFromNearby(sep, avgPos, avgVel, count)
+}
+
+func (b *boid) calcAccelerationFromNearby(sep, avgPos, avgVel Point, count int) Point {
 	accel := Point{}
 	if b.bounce {
 		accel = Point{bounce(b.pos.x, b.maxX), bounce(b.pos.y, b.maxY)}
 	}
-
-	var accelCohesion, accelSeparation, accelAlignment Point
-
-	sep, avgPos, avgVel, count := b.measureNearby(boids)
 
 	if count == 0 {
 		return accel
@@ -102,9 +125,9 @@ func (b *boid) calcAcceleration(boids []boid) Point {
 	avgPos = avgPos.DivideV(float64(count))
 	avgVel = avgVel.DivideV(float64(count))
 
-	accelAlignment = avgVel.Subtract(b.vel).MultiplyV(adjustRate).MultiplyV(alignmentRate)
-	accelCohesion = avgPos.Subtract(b.pos).MultiplyV(adjustRate).MultiplyV(cohesionRate)
-	accelSeparation = sep.MultiplyV(adjustRate).MultiplyV(separationRate)
+	accelAlignment := avgVel.Subtract(b.vel).MultiplyV(adjustRate).MultiplyV(alignmentRate)
+	accelCohesion := avgPos.Subtract(b.pos).MultiplyV(adjustRate).MultiplyV(cohesionRate)
+	accelSeparation := sep.MultiplyV(adjustRate).MultiplyV(separationRate)
 
 	accel = accel.Add(accelAlignment).Add(accelCohesion).Add(accelSeparation)
 	return accel
@@ -113,17 +136,57 @@ func (b *boid) calcAcceleration(boids []boid) Point {
 func (b *boid) measureNearby(boids []boid) (Point, Point, Point, int) {
 	var sep, avgPos, avgVel Point
 	count := 0
+	if radius <= 0 {
+		return sep, avgPos, avgVel, count
+	}
+	radiusSquared := radius * radius
+	pos := b.pos
 
-	for _, other := range boids {
-		if other.pos.x == b.pos.x && other.pos.y == b.pos.y {
+	for i := range boids {
+		otherPos := boids[i].pos
+		offset := pos.Subtract(otherPos)
+		if offset.x == 0 && offset.y == 0 {
 			continue
 		}
-		if b.pos.Distance(other.pos) < radius {
-			count++
-			avgVel = avgVel.Add(other.vel)
-			avgPos = avgPos.Add(other.pos)
-			sep = sep.Add(b.pos.Subtract(other.pos).DivideV(b.pos.Distance(other.pos) * 1.5))
+		distanceSquared := offset.magnitudeSquared()
+		if !(distanceSquared < radiusSquared) {
+			continue
 		}
+
+		distance := math.Sqrt(distanceSquared)
+		count++
+		avgVel = avgVel.Add(boids[i].vel)
+		avgPos = avgPos.Add(otherPos)
+		sep = sep.Add(offset.DivideV(distance * 1.5))
+	}
+	return sep, avgPos, avgVel, count
+}
+
+func (b *boid) measureNearbyCandidateIndexes(boids []boid, candidateIndexes []int) (Point, Point, Point, int) {
+	var sep, avgPos, avgVel Point
+	count := 0
+	if radius <= 0 {
+		return sep, avgPos, avgVel, count
+	}
+	radiusSquared := radius * radius
+	pos := b.pos
+
+	for _, candidateIndex := range candidateIndexes {
+		otherPos := boids[candidateIndex].pos
+		offset := pos.Subtract(otherPos)
+		if offset.x == 0 && offset.y == 0 {
+			continue
+		}
+		distanceSquared := offset.magnitudeSquared()
+		if !(distanceSquared < radiusSquared) {
+			continue
+		}
+
+		distance := math.Sqrt(distanceSquared)
+		count++
+		avgVel = avgVel.Add(boids[candidateIndex].vel)
+		avgPos = avgPos.Add(otherPos)
+		sep = sep.Add(offset.DivideV(distance * 1.5))
 	}
 	return sep, avgPos, avgVel, count
 }

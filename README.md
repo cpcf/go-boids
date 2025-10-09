@@ -32,10 +32,11 @@ Defaults and descriptions are as follows:
 FPS               = 120   # Frames per second
 BOUNCE            = true  # Bounce off walls
 CLAMP_MIN_SPEED   = true  # Sets the minimum speed
-TARGET_MIN_SPEED  = 0.01  # Minimum speed of boid if clamped
+TARGET_MIN_SPEED  = 0.05  # Minimum speed of boid if clamped
+CELLS_PER_BOID    = 75    # Terminal cells per boid; smaller values mean more boids
 
 RADIUS            = 7.0   # Tiles from boid that affect it
-MAX_SPEED         = 0.5   # Maximum speed of boid
+MAX_SPEED         = 1.0   # Maximum speed of boid
 ADJUST_RATE       = 0.025 # Rate of adjustment for alignment, cohesion, and separation
 ALIGNMENT_RATE    = 1.0   # Muliplier for alignment adjustment
 COHESION_RATE     = 1.0   # Muliplier for cohesion adjustment
