@@ -1,5 +1,12 @@
 package main
 
+import (
+	"os"
+	"strconv"
+
+	"github.com/joho/godotenv"
+)
+
 type config struct {
 	fps            int
 	bounce         bool
@@ -28,4 +35,44 @@ func defaultConfig() config {
 		separationRate: 1.0,
 		targetMinSpeed: 0.05,
 	}
+}
+
+func loadConfig() config {
+	cfg := defaultConfig()
+	if err := godotenv.Overload(); err != nil {
+		return cfg
+	}
+
+	envVars := map[string]interface{}{
+		"FPS":              &cfg.fps,
+		"BOUNCE":           &cfg.bounce,
+		"CLAMP_MIN_SPEED":  &cfg.clampMinSpeed,
+		"CELLS_PER_BOID":   &cfg.cellsPerBoid,
+		"RADIUS":           &cfg.radius,
+		"MAX_SPEED":        &cfg.maxSpeed,
+		"ADJUST_RATE":      &cfg.adjustRate,
+		"ALIGNMENT_RATE":   &cfg.alignmentRate,
+		"COHESION_RATE":    &cfg.cohesionRate,
+		"SEPARATION_RATE":  &cfg.separationRate,
+		"TARGET_MIN_SPEED": &cfg.targetMinSpeed,
+	}
+
+	for key, ptr := range envVars {
+		if v := os.Getenv(key); v != "" {
+			switch p := ptr.(type) {
+			case *int:
+				*p, _ = strconv.Atoi(v)
+			case *bool:
+				*p, _ = strconv.ParseBool(v)
+			case *float64:
+				*p, _ = strconv.ParseFloat(v, 64)
+			}
+		}
+	}
+
+	if cfg.cellsPerBoid <= 0 {
+		cfg.cellsPerBoid = defaultCellsPerBoid
+	}
+
+	return cfg
 }

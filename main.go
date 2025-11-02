@@ -3,10 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -37,38 +35,16 @@ var targetMinSpeed = 0.05
 const defaultCellsPerBoid = 75
 
 func updateVars() {
-	if err := godotenv.Overload(); err != nil {
-		// If there's no .env file, we'll just use the defaults
-		return
-	}
-	envVars := map[string]interface{}{
-		"FPS":              &fps,
-		"BOUNCE":           &bouncey,
-		"CLAMP_MIN_SPEED":  &clampMinSpeed,
-		"CELLS_PER_BOID":   &cellsPerBoid,
-		"RADIUS":           &radius,
-		"MAX_SPEED":        &maxSpeed,
-		"ADJUST_RATE":      &adjustRate,
-		"ALIGNMENT_RATE":   &alignmentRate,
-		"COHESION_RATE":    &cohesionRate,
-		"SEPARATION_RATE":  &separationRate,
-		"TARGET_MIN_SPEED": &targetMinSpeed,
-	}
-
-	for key, ptr := range envVars {
-		if v := os.Getenv(key); v != "" {
-			switch p := ptr.(type) {
-			case *int:
-				*p, _ = strconv.Atoi(v)
-			case *bool:
-				*p, _ = strconv.ParseBool(v)
-			case *float64:
-				*p, _ = strconv.ParseFloat(v, 64)
-			}
-		}
-	}
-
-	if cellsPerBoid <= 0 {
-		cellsPerBoid = defaultCellsPerBoid
-	}
+	cfg := loadConfig()
+	fps = cfg.fps
+	bouncey = cfg.bounce
+	clampMinSpeed = cfg.clampMinSpeed
+	cellsPerBoid = cfg.cellsPerBoid
+	radius = cfg.radius
+	maxSpeed = cfg.maxSpeed
+	adjustRate = cfg.adjustRate
+	alignmentRate = cfg.alignmentRate
+	cohesionRate = cfg.cohesionRate
+	separationRate = cfg.separationRate
+	targetMinSpeed = cfg.targetMinSpeed
 }
