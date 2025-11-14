@@ -15,19 +15,19 @@ type boid struct {
 	clampMinSpeed bool
 }
 
-func initBoidsOnScreenSize(screenWidth, screenHeight int) []boid {
-	count := screenWidth*screenHeight/effectiveCellsPerBoid() + 1
-	return initRandomBoids(count, screenWidth, screenHeight)
+func initBoidsOnScreenSize(cfg config, screenWidth, screenHeight int) []boid {
+	count := screenWidth*screenHeight/effectiveCellsPerBoid(cfg) + 1
+	return initRandomBoids(cfg, count, screenWidth, screenHeight)
 }
 
-func effectiveCellsPerBoid() int {
-	if cellsPerBoid <= 0 {
+func effectiveCellsPerBoid(cfg config) int {
+	if cfg.cellsPerBoid <= 0 {
 		return defaultCellsPerBoid
 	}
-	return cellsPerBoid
+	return cfg.cellsPerBoid
 }
 
-func initRandomBoids(count int, screenWidth, screenHeight int) []boid {
+func initRandomBoids(cfg config, count int, screenWidth, screenHeight int) []boid {
 	boids := make([]boid, count)
 	for i := range boids {
 		boids[i] = boid{
@@ -36,13 +36,13 @@ func initRandomBoids(count int, screenWidth, screenHeight int) []boid {
 				y: rand.Float64() * float64(screenHeight),
 			},
 			vel: Point{
-				x: rand.Float64()*maxSpeed*2 - maxSpeed,
-				y: rand.Float64()*maxSpeed*2 - maxSpeed,
+				x: rand.Float64()*cfg.maxSpeed*2 - cfg.maxSpeed,
+				y: rand.Float64()*cfg.maxSpeed*2 - cfg.maxSpeed,
 			},
 			maxX:          float64(screenWidth),
 			maxY:          float64(screenHeight),
-			bounce:        bouncey,
-			clampMinSpeed: clampMinSpeed,
+			bounce:        cfg.bounce,
+			clampMinSpeed: cfg.clampMinSpeed,
 		}
 	}
 	return boids

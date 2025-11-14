@@ -10,13 +10,18 @@ type frameMsg struct{}
 
 const spatialGridBoidThreshold = 128
 
-func animate() tea.Cmd {
-	return tea.Tick(time.Second/time.Duration(fps), func(_ time.Time) tea.Msg {
+func animate(cfg config) tea.Cmd {
+	if cfg == (config{}) {
+		cfg = defaultConfig()
+	}
+
+	return tea.Tick(time.Second/time.Duration(cfg.fps), func(_ time.Time) tea.Msg {
 		return frameMsg{}
 	})
 }
 
 type model struct {
+	cfg              config
 	cells            cellbuffer
 	boids            []boid
 	previousBoids    []boid
@@ -25,7 +30,7 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return animate()
+	return animate(m.cfg)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -33,9 +38,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m, tea.Quit
 	case tea.WindowSizeMsg:
-		updateVars()
+		m.cfg = updateVars()
 		m.cells.init(msg.Width, msg.Height)
-		m.boids = initBoidsOnScreenSize(msg.Width, msg.Height)
+		m.boids = initBoidsOnScreenSize(m.cfg, msg.Width, msg.Height)
 		return m, nil
 	case frameMsg:
 		if !m.cells.ready() {
@@ -44,7 +49,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.cells.wipe()
 		m.updateBoids()
-		return m, animate()
+		return m, animate(m.cfg)
 	default:
 		return m, nil
 	}

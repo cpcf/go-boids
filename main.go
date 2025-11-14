@@ -8,9 +8,11 @@ import (
 )
 
 func main() {
-	updateVars()
+	cfg := updateVars()
 
-	m := model{}
+	m := model{
+		cfg: cfg,
+	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
@@ -34,7 +36,7 @@ var targetMinSpeed = 0.05
 
 const defaultCellsPerBoid = 75
 
-func updateVars() {
+func updateVars() config {
 	cfg := loadConfig()
 	fps = cfg.fps
 	bouncey = cfg.bounce
@@ -47,4 +49,6 @@ func updateVars() {
 	cohesionRate = cfg.cohesionRate
 	separationRate = cfg.separationRate
 	targetMinSpeed = cfg.targetMinSpeed
+
+	return cfg
 }

@@ -83,10 +83,10 @@ func TestInitBoidsOnScreenSizeCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			preserveSimGlobals(t)
-			cellsPerBoid = tt.cellsPerBoid
+			cfg := defaultConfig()
+			cfg.cellsPerBoid = tt.cellsPerBoid
 
-			boids := initBoidsOnScreenSize(40, 25)
+			boids := initBoidsOnScreenSize(cfg, 40, 25)
 
 			if got := len(boids); got != tt.want {
 				t.Fatalf("len(initBoidsOnScreenSize()) = %d, want %d", got, tt.want)
@@ -99,11 +99,46 @@ func TestUpdateVarsReadsCellsPerBoid(t *testing.T) {
 	preserveSimGlobals(t)
 	withDotenv(t, "CELLS_PER_BOID=100\n")
 
-	updateVars()
+	cfg := updateVars()
 
-	boids := initBoidsOnScreenSize(40, 25)
+	boids := initBoidsOnScreenSize(cfg, 40, 25)
 	if got, want := len(boids), 11; got != want {
 		t.Fatalf("len(initBoidsOnScreenSize()) = %d, want %d", got, want)
+	}
+}
+
+func TestInitBoidsUsesProvidedConfig(t *testing.T) {
+	preserveSimGlobals(t)
+
+	cfg := defaultConfig()
+	cfg.cellsPerBoid = 100
+	cfg.maxSpeed = 0.1
+	cfg.bounce = false
+	cfg.clampMinSpeed = false
+
+	cellsPerBoid = 1
+	maxSpeed = 10
+	bouncey = true
+	clampMinSpeed = true
+
+	boids := initBoidsOnScreenSize(cfg, 40, 25)
+	if got, want := len(boids), 11; got != want {
+		t.Fatalf("len(initBoidsOnScreenSize()) = %d, want %d", got, want)
+	}
+
+	for i := range boids {
+		if boids[i].bounce != cfg.bounce {
+			t.Fatalf("boid[%d].bounce = %v, want %v", i, boids[i].bounce, cfg.bounce)
+		}
+		if boids[i].clampMinSpeed != cfg.clampMinSpeed {
+			t.Fatalf("boid[%d].clampMinSpeed = %v, want %v", i, boids[i].clampMinSpeed, cfg.clampMinSpeed)
+		}
+		if boids[i].vel.x < -cfg.maxSpeed || boids[i].vel.x > cfg.maxSpeed {
+			t.Fatalf("boid[%d].vel.x = %f, expected within [-%f, %f]", i, boids[i].vel.x, cfg.maxSpeed, cfg.maxSpeed)
+		}
+		if boids[i].vel.y < -cfg.maxSpeed || boids[i].vel.y > cfg.maxSpeed {
+			t.Fatalf("boid[%d].vel.y = %f, expected within [-%f, %f]", i, boids[i].vel.y, cfg.maxSpeed, cfg.maxSpeed)
+		}
 	}
 }
 
