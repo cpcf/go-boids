@@ -19,18 +19,19 @@ var (
 )
 
 func BenchmarkUpdateBoids(b *testing.B) {
-	preserveSimGlobals(b)
-	radius = 7
-	maxSpeed = 0.5
-	adjustRate = 0.025
-	alignmentRate = 1
-	cohesionRate = 1
-	separationRate = 1
-	targetMinSpeed = 0.01
+	cfg := defaultConfig()
+	cfg.radius = 7
+	cfg.maxSpeed = 0.5
+	cfg.adjustRate = 0.025
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 1
+	cfg.separationRate = 1
+	cfg.targetMinSpeed = 0.01
 
 	for _, size := range benchmarkSizes {
 		b.Run(size.name, func(b *testing.B) {
 			var m model
+			m.cfg = cfg
 			m.cells.init(size.width, size.height)
 			m.boids = deterministicBoids(size.width, size.height)
 
@@ -49,8 +50,8 @@ func BenchmarkUpdateBoids(b *testing.B) {
 }
 
 func BenchmarkMeasureNearby(b *testing.B) {
-	preserveSimGlobals(b)
-	radius = 7
+	cfg := defaultConfig()
+	cfg.radius = 7
 
 	for _, size := range benchmarkSizes {
 		b.Run(size.name, func(b *testing.B) {
@@ -60,7 +61,7 @@ func BenchmarkMeasureNearby(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				sep, avgPos, avgVel, count := subject.measureNearby(boids)
+				sep, avgPos, avgVel, count := subject.measureNearby(boids, cfg)
 				benchPointSink = sep.Add(avgPos).Add(avgVel)
 				benchCountSink = count
 			}
@@ -69,21 +70,21 @@ func BenchmarkMeasureNearby(b *testing.B) {
 }
 
 func BenchmarkMeasureNearbyCandidateIndexes(b *testing.B) {
-	preserveSimGlobals(b)
-	radius = 7
+	cfg := defaultConfig()
+	cfg.radius = 7
 
 	for _, size := range benchmarkSizes {
 		b.Run(size.name, func(b *testing.B) {
 			boids := deterministicBoids(size.width, size.height)
 			subject := boids[len(boids)/2]
-			grid := newSpatialGrid(radius)
+			grid := newSpatialGrid(cfg.radius)
 			grid.rebuild(boids)
 			candidates := grid.candidateIndexes(subject.pos, make([]int, 0, len(boids)))
 
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				sep, avgPos, avgVel, count := subject.measureNearbyCandidateIndexes(boids, candidates)
+				sep, avgPos, avgVel, count := subject.measureNearbyCandidateIndexes(boids, candidates, cfg)
 				benchPointSink = sep.Add(avgPos).Add(avgVel)
 				benchCountSink = count
 			}

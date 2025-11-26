@@ -108,18 +108,11 @@ func TestUpdateVarsReadsCellsPerBoid(t *testing.T) {
 }
 
 func TestInitBoidsUsesProvidedConfig(t *testing.T) {
-	preserveSimGlobals(t)
-
 	cfg := defaultConfig()
 	cfg.cellsPerBoid = 100
 	cfg.maxSpeed = 0.1
 	cfg.bounce = false
 	cfg.clampMinSpeed = false
-
-	cellsPerBoid = 1
-	maxSpeed = 10
-	bouncey = true
-	clampMinSpeed = true
 
 	boids := initBoidsOnScreenSize(cfg, 40, 25)
 	if got, want := len(boids), 11; got != want {
@@ -204,10 +197,10 @@ func TestBoidMove(t *testing.T) {
 }
 
 func TestBoidUpdateWrapsAndUpdatesForward(t *testing.T) {
-	preserveSimGlobals(t)
-	radius = 1
-	maxSpeed = 2
-	clampMinSpeed = false
+	cfg := defaultConfig()
+	cfg.radius = 1
+	cfg.maxSpeed = 2
+	cfg.clampMinSpeed = false
 
 	b := boid{
 		pos:           Point{x: 9.5, y: 2},
@@ -218,7 +211,7 @@ func TestBoidUpdateWrapsAndUpdatesForward(t *testing.T) {
 		clampMinSpeed: false,
 	}
 
-	b.update([]boid{b})
+	b.update([]boid{b}, cfg)
 
 	if got, want := b.nextPos, (Point{x: 0.5, y: 2}); got != want {
 		t.Fatalf("nextPos = %+v, want %+v", got, want)
@@ -228,9 +221,31 @@ func TestBoidUpdateWrapsAndUpdatesForward(t *testing.T) {
 	}
 }
 
-func TestMeasureNearby(t *testing.T) {
+func TestBoidApplyAccelerationUsesConfigMaxSpeed(t *testing.T) {
 	preserveSimGlobals(t)
-	radius = 5
+	maxSpeed = 99
+
+	cfg := defaultConfig()
+	cfg.maxSpeed = 1
+	cfg.clampMinSpeed = false
+
+	b := boid{
+		vel:           Point{x: 0.8, y: 0.9},
+		clampMinSpeed: false,
+		maxX:          10,
+		maxY:          10,
+	}
+
+	b.applyAcceleration(Point{x: 1, y: 2}, cfg)
+
+	if got, want := b.vel, (Point{x: 1, y: 1}); got != want {
+		t.Fatalf("vel = %+v, want %+v", got, want)
+	}
+}
+
+func TestMeasureNearby(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.radius = 5
 
 	subject := boid{
 		pos: Point{x: 10, y: 10},
@@ -243,7 +258,7 @@ func TestMeasureNearby(t *testing.T) {
 		{pos: Point{x: 30, y: 30}, vel: Point{x: 7, y: 7}},
 	}
 
-	sep, avgPos, avgVel, count := subject.measureNearby(boids)
+	sep, avgPos, avgVel, count := subject.measureNearby(boids, cfg)
 
 	if count != 2 {
 		t.Fatalf("count = %d, want 2", count)
@@ -260,8 +275,8 @@ func TestMeasureNearby(t *testing.T) {
 }
 
 func TestMeasureNearbyCandidateIndexesMatchesFullScan(t *testing.T) {
-	preserveSimGlobals(t)
-	radius = 5
+	cfg := defaultConfig()
+	cfg.radius = 5
 
 	boids := []boid{
 		{pos: Point{x: 9.9, y: 9.9}, vel: Point{x: 1, y: 0}},      // near upper cell boundaries
@@ -280,7 +295,7 @@ func TestMeasureNearbyCandidateIndexesMatchesFullScan(t *testing.T) {
 		{pos: Point{x: -5.2, y: -0.1}, vel: Point{x: -2, y: 0.5}}, // candidate, outside radius
 		{pos: Point{x: -20, y: -20}, vel: Point{x: -7, y: -7}},    // outside candidate cells
 	}
-	grid := newSpatialGrid(radius)
+	grid := newSpatialGrid(cfg.radius)
 	grid.rebuild(boids)
 
 	tests := []struct {
@@ -320,16 +335,16 @@ func TestMeasureNearbyCandidateIndexesMatchesFullScan(t *testing.T) {
 			if slices.Contains(candidates, tt.wantDistant) {
 				t.Fatalf("test setup expected candidate indexes to exclude distant boid %d, got %v", tt.wantDistant, candidates)
 			}
-			assertCandidatesIncludeNearby(t, subject, boids, candidates)
-			assertNearbyMeasurementsMatch(t, subject, boids, candidates)
+			assertCandidatesIncludeNearby(t, subject, boids, candidates, cfg)
+			assertNearbyMeasurementsMatch(t, subject, boids, candidates, cfg)
 		})
 	}
 }
 
-func assertCandidatesIncludeNearby(t *testing.T, subject boid, boids []boid, candidates []int) {
+func assertCandidatesIncludeNearby(t *testing.T, subject boid, boids []boid, candidates []int, cfg config) {
 	t.Helper()
 
-	radiusSquared := radius * radius
+	radiusSquared := cfg.radius * cfg.radius
 	for i := range boids {
 		if subject.pos.distanceSquared(boids[i].pos) < radiusSquared && !slices.Contains(candidates, i) {
 			t.Fatalf("candidate indexes = %v, missing nearby boid %d at %+v for subject at %+v", candidates, i, boids[i].pos, subject.pos)
@@ -337,11 +352,11 @@ func assertCandidatesIncludeNearby(t *testing.T, subject boid, boids []boid, can
 	}
 }
 
-func assertNearbyMeasurementsMatch(t *testing.T, subject boid, boids []boid, candidates []int) {
+func assertNearbyMeasurementsMatch(t *testing.T, subject boid, boids []boid, candidates []int, cfg config) {
 	t.Helper()
 
-	wantSep, wantAvgPos, wantAvgVel, wantCount := subject.measureNearby(boids)
-	gotSep, gotAvgPos, gotAvgVel, gotCount := subject.measureNearbyCandidateIndexes(boids, candidates)
+	wantSep, wantAvgPos, wantAvgVel, wantCount := subject.measureNearby(boids, cfg)
+	gotSep, gotAvgPos, gotAvgVel, gotCount := subject.measureNearbyCandidateIndexes(boids, candidates, cfg)
 
 	if gotCount != wantCount {
 		t.Fatalf("count = %d, want %d", gotCount, wantCount)
@@ -357,9 +372,29 @@ func assertNearbyMeasurementsMatch(t *testing.T, subject boid, boids []boid, can
 	}
 }
 
-func TestBounce(t *testing.T) {
+func TestMeasureNearbyUsesConfigRadius(t *testing.T) {
 	preserveSimGlobals(t)
-	radius = 7
+	radius = 100
+
+	cfg := defaultConfig()
+	cfg.radius = 2
+
+	subject := boid{pos: Point{x: 1, y: 1}}
+	boids := []boid{
+		subject,
+		{pos: Point{x: 2.5, y: 1}}, // inside radius
+		{pos: Point{x: 4.5, y: 1}}, // outside radius 2
+	}
+
+	_, _, _, count := subject.measureNearby(boids, cfg)
+	if got, want := count, 1; got != want {
+		t.Fatalf("count = %d, want %d", got, want)
+	}
+}
+
+func TestBounce(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.radius = 7
 
 	tests := []struct {
 		name         string
@@ -389,7 +424,7 @@ func TestBounce(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := bounce(tt.pos, tt.maxBorderPos); !near(got, tt.want) {
+			if got := bounce(tt.pos, tt.maxBorderPos, cfg); !near(got, tt.want) {
 				t.Fatalf("bounce() = %v, want %v", got, tt.want)
 			}
 		})

@@ -3,16 +3,17 @@ package main
 import "testing"
 
 func TestUpdateBoidsUsesPreviousFrameState(t *testing.T) {
-	preserveSimGlobals(t)
-	radius = 10
-	maxSpeed = 10
-	adjustRate = 1
-	alignmentRate = 1
-	cohesionRate = 0
-	separationRate = 0
-	clampMinSpeed = false
+	cfg := defaultConfig()
+	cfg.radius = 10
+	cfg.maxSpeed = 10
+	cfg.adjustRate = 1
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 0
+	cfg.separationRate = 0
+	cfg.clampMinSpeed = false
 
 	var m model
+	m.cfg = cfg
 	m.cells.init(30, 20)
 	m.boids = []boid{
 		{
@@ -50,16 +51,17 @@ func TestUpdateBoidsUsesPreviousFrameState(t *testing.T) {
 }
 
 func TestUpdateBoidsCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T) {
-	preserveSimGlobals(t)
-	radius = 5
-	maxSpeed = 10
-	adjustRate = 1
-	alignmentRate = 1
-	cohesionRate = 0
-	separationRate = 0
-	clampMinSpeed = false
+	cfg := defaultConfig()
+	cfg.radius = 5
+	cfg.maxSpeed = 10
+	cfg.adjustRate = 1
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 0
+	cfg.separationRate = 0
+	cfg.clampMinSpeed = false
 
 	var m model
+	m.cfg = cfg
 	m.cells.init(30, 20)
 	m.boids = []boid{
 		{
@@ -92,16 +94,17 @@ func TestUpdateBoidsCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T) {
 }
 
 func TestUpdateBoidsDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
-	preserveSimGlobals(t)
-	radius = 5
-	maxSpeed = 10
-	adjustRate = 1
-	alignmentRate = 1
-	cohesionRate = 0
-	separationRate = 0
-	clampMinSpeed = false
+	cfg := defaultConfig()
+	cfg.radius = 5
+	cfg.maxSpeed = 10
+	cfg.adjustRate = 1
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 0
+	cfg.separationRate = 0
+	cfg.clampMinSpeed = false
 
 	var m model
+	m.cfg = cfg
 	m.cells.init(30, 20)
 	m.boids = []boid{
 		{

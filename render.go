@@ -64,10 +64,10 @@ func (m *model) updateBoids() {
 
 	if len(m.previousBoids) < spatialGridBoidThreshold {
 		for i := range m.boids {
-			m.boids[i].update(m.previousBoids)
+			m.boids[i].update(m.previousBoids, m.cfg)
 		}
 	} else {
-		m.nearbyGrid.cellSize = radius
+		m.nearbyGrid.cellSize = m.cfg.radius
 		m.nearbyGrid.rebuild(m.previousBoids)
 		if cap(m.candidateIndexes) < len(m.previousBoids) {
 			m.candidateIndexes = make([]int, 0, len(m.previousBoids))
@@ -75,7 +75,7 @@ func (m *model) updateBoids() {
 
 		for i := range m.boids {
 			m.candidateIndexes = m.nearbyGrid.candidateIndexes(m.previousBoids[i].pos, m.candidateIndexes)
-			m.boids[i].updateWithCandidateIndexes(m.previousBoids, m.candidateIndexes)
+			m.boids[i].updateWithCandidateIndexes(m.previousBoids, m.candidateIndexes, m.cfg)
 		}
 	}
 
