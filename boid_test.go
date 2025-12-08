@@ -1,57 +1,9 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 )
-
-type simGlobals struct {
-	fps            int
-	bouncey        bool
-	clampMinSpeed  bool
-	cellsPerBoid   int
-	radius         float64
-	maxSpeed       float64
-	adjustRate     float64
-	alignmentRate  float64
-	cohesionRate   float64
-	separationRate float64
-	targetMinSpeed float64
-}
-
-func preserveSimGlobals(tb testing.TB) {
-	tb.Helper()
-
-	snapshot := simGlobals{
-		fps:            fps,
-		bouncey:        bouncey,
-		clampMinSpeed:  clampMinSpeed,
-		cellsPerBoid:   cellsPerBoid,
-		radius:         radius,
-		maxSpeed:       maxSpeed,
-		adjustRate:     adjustRate,
-		alignmentRate:  alignmentRate,
-		cohesionRate:   cohesionRate,
-		separationRate: separationRate,
-		targetMinSpeed: targetMinSpeed,
-	}
-
-	tb.Cleanup(func() {
-		fps = snapshot.fps
-		bouncey = snapshot.bouncey
-		clampMinSpeed = snapshot.clampMinSpeed
-		cellsPerBoid = snapshot.cellsPerBoid
-		radius = snapshot.radius
-		maxSpeed = snapshot.maxSpeed
-		adjustRate = snapshot.adjustRate
-		alignmentRate = snapshot.alignmentRate
-		cohesionRate = snapshot.cohesionRate
-		separationRate = snapshot.separationRate
-		targetMinSpeed = snapshot.targetMinSpeed
-	})
-}
 
 func TestInitBoidsOnScreenSizeCount(t *testing.T) {
 	tests := []struct {
@@ -95,13 +47,13 @@ func TestInitBoidsOnScreenSizeCount(t *testing.T) {
 	}
 }
 
-func TestUpdateVarsReadsCellsPerBoid(t *testing.T) {
-	preserveSimGlobals(t)
-	withDotenv(t, "CELLS_PER_BOID=100\n")
+func TestInitBoidsUsesCellsPerBoidFromEnvConfig(t *testing.T) {
+	configWithCleanEnv(t)
+	configWithDotenv(t, `CELLS_PER_BOID=100`)
 
-	cfg := updateVars()
-
+	cfg := loadConfig()
 	boids := initBoidsOnScreenSize(cfg, 40, 25)
+
 	if got, want := len(boids), 11; got != want {
 		t.Fatalf("len(initBoidsOnScreenSize()) = %d, want %d", got, want)
 	}
@@ -133,40 +85,6 @@ func TestInitBoidsUsesProvidedConfig(t *testing.T) {
 			t.Fatalf("boid[%d].vel.y = %f, expected within [-%f, %f]", i, boids[i].vel.y, cfg.maxSpeed, cfg.maxSpeed)
 		}
 	}
-}
-
-func TestUpdateVarsFallsBackForInvalidCellsPerBoid(t *testing.T) {
-	preserveSimGlobals(t)
-	cellsPerBoid = 100
-	withDotenv(t, "CELLS_PER_BOID=0\n")
-
-	updateVars()
-
-	if got, want := cellsPerBoid, defaultCellsPerBoid; got != want {
-		t.Fatalf("cellsPerBoid = %d, want %d", got, want)
-	}
-}
-
-func withDotenv(t *testing.T, contents string) {
-	t.Helper()
-	t.Setenv("CELLS_PER_BOID", "")
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("get working directory: %v", err)
-	}
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte(contents), 0o600); err != nil {
-		t.Fatalf("write .env: %v", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("change working directory: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(wd); err != nil {
-			t.Errorf("restore working directory: %v", err)
-		}
-	})
 }
 
 func TestBoidWrapAroundScreen(t *testing.T) {
@@ -222,9 +140,6 @@ func TestBoidUpdateWrapsAndUpdatesForward(t *testing.T) {
 }
 
 func TestBoidApplyAccelerationUsesConfigMaxSpeed(t *testing.T) {
-	preserveSimGlobals(t)
-	maxSpeed = 99
-
 	cfg := defaultConfig()
 	cfg.maxSpeed = 1
 	cfg.clampMinSpeed = false
@@ -373,9 +288,6 @@ func assertNearbyMeasurementsMatch(t *testing.T, subject boid, boids []boid, can
 }
 
 func TestMeasureNearbyUsesConfigRadius(t *testing.T) {
-	preserveSimGlobals(t)
-	radius = 100
-
 	cfg := defaultConfig()
 	cfg.radius = 2
 

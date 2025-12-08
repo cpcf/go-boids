@@ -7,6 +7,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const defaultCellsPerBoid = 75
+
 type config struct {
 	fps            int
 	bounce         bool

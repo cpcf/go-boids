@@ -38,7 +38,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m, tea.Quit
 	case tea.WindowSizeMsg:
-		m.cfg = updateVars()
+		m.cfg = loadConfig()
 		m.cells.init(msg.Width, msg.Height)
 		m.boids = initBoidsOnScreenSize(m.cfg, msg.Width, msg.Height)
 		return m, nil
