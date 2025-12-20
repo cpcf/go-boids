@@ -8,8 +8,6 @@ import (
 
 type frameMsg struct{}
 
-const spatialGridBoidThreshold = 128
-
 func animate(cfg config) tea.Cmd {
 	if cfg == (config{}) {
 		cfg = defaultConfig()
@@ -21,12 +19,10 @@ func animate(cfg config) tea.Cmd {
 }
 
 type model struct {
-	cfg              config
-	cells            cellbuffer
-	boids            []boid
-	previousBoids    []boid
-	nearbyGrid       spatialGrid
-	candidateIndexes []int
+	cfg   config
+	sim   simulation
+	cells cellbuffer
+	boids []boid
 }
 
 func (m model) Init() tea.Cmd {
@@ -39,6 +35,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case tea.WindowSizeMsg:
 		m.cfg = loadConfig()
+		m.sim = newSimulation(m.cfg)
 		m.cells.init(msg.Width, msg.Height)
 		m.boids = initBoidsOnScreenSize(m.cfg, msg.Width, msg.Height)
 		return m, nil
@@ -60,27 +57,9 @@ func (m model) View() string {
 }
 
 func (m *model) updateBoids() {
-	m.previousBoids = append(m.previousBoids[:0], m.boids...)
-
-	if len(m.previousBoids) < spatialGridBoidThreshold {
-		for i := range m.boids {
-			m.boids[i].update(m.previousBoids, m.cfg)
-		}
-	} else {
-		m.nearbyGrid.cellSize = m.cfg.radius
-		m.nearbyGrid.rebuild(m.previousBoids)
-		if cap(m.candidateIndexes) < len(m.previousBoids) {
-			m.candidateIndexes = make([]int, 0, len(m.previousBoids))
-		}
-
-		for i := range m.boids {
-			m.candidateIndexes = m.nearbyGrid.candidateIndexes(m.previousBoids[i].pos, m.candidateIndexes)
-			m.boids[i].updateWithCandidateIndexes(m.previousBoids, m.candidateIndexes, m.cfg)
-		}
-	}
+	m.sim.Step(m.boids)
 
 	for i := range m.boids {
-		m.boids[i].move()
 		drawTriangle(&m.cells, m.boids[i].pos, m.boids[i].forward)
 	}
 }

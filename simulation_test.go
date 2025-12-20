@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-func TestUpdateBoidsUsesPreviousFrameState(t *testing.T) {
+func TestSimulationStepUsesPreviousFrameState(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.radius = 10
 	cfg.maxSpeed = 10
@@ -12,10 +12,8 @@ func TestUpdateBoidsUsesPreviousFrameState(t *testing.T) {
 	cfg.separationRate = 0
 	cfg.clampMinSpeed = false
 
-	var m model
-	m.cfg = cfg
-	m.cells.init(30, 20)
-	m.boids = []boid{
+	sim := newSimulation(cfg)
+	boids := []boid{
 		{
 			pos:           Point{x: 10, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -34,23 +32,23 @@ func TestUpdateBoidsUsesPreviousFrameState(t *testing.T) {
 		},
 	}
 
-	m.updateBoids()
+	sim.Step(boids)
 
-	if got, want := m.boids[0].vel, (Point{x: 3, y: 0}); got != want {
+	if got, want := boids[0].vel, (Point{x: 3, y: 0}); got != want {
 		t.Fatalf("boid 0 vel = %+v, want %+v", got, want)
 	}
-	if got, want := m.boids[1].vel, (Point{x: 1, y: 0}); got != want {
+	if got, want := boids[1].vel, (Point{x: 1, y: 0}); got != want {
 		t.Fatalf("boid 1 vel = %+v, want %+v", got, want)
 	}
-	if got, want := m.boids[0].pos, (Point{x: 13, y: 10}); got != want {
+	if got, want := boids[0].pos, (Point{x: 13, y: 10}); got != want {
 		t.Fatalf("boid 0 pos = %+v, want %+v", got, want)
 	}
-	if got, want := m.boids[1].pos, (Point{x: 13, y: 10}); got != want {
+	if got, want := boids[1].pos, (Point{x: 13, y: 10}); got != want {
 		t.Fatalf("boid 1 pos = %+v, want %+v", got, want)
 	}
 }
 
-func TestUpdateBoidsCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T) {
+func TestSimulationStepCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.radius = 5
 	cfg.maxSpeed = 10
@@ -60,10 +58,8 @@ func TestUpdateBoidsCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T) {
 	cfg.separationRate = 0
 	cfg.clampMinSpeed = false
 
-	var m model
-	m.cfg = cfg
-	m.cells.init(30, 20)
-	m.boids = []boid{
+	sim := newSimulation(cfg)
+	boids := padBoidsForSpatialGridPath([]boid{
 		{
 			pos:           Point{x: 9.9, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -80,20 +76,19 @@ func TestUpdateBoidsCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T) {
 			bounce:        false,
 			clampMinSpeed: false,
 		},
-	}
-	m.boids = padBoidsForSpatialGridPath(m.boids)
+	})
 
-	m.updateBoids()
+	sim.Step(boids)
 
-	if got, want := m.boids[0].vel, (Point{x: 3, y: 0}); got != want {
+	if got, want := boids[0].vel, (Point{x: 3, y: 0}); got != want {
 		t.Fatalf("boid 0 vel = %+v, want %+v", got, want)
 	}
-	if got, want := m.boids[1].vel, (Point{x: 1, y: 0}); got != want {
+	if got, want := boids[1].vel, (Point{x: 1, y: 0}); got != want {
 		t.Fatalf("boid 1 vel = %+v, want %+v", got, want)
 	}
 }
 
-func TestUpdateBoidsDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
+func TestSimulationStepDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.radius = 5
 	cfg.maxSpeed = 10
@@ -103,10 +98,8 @@ func TestUpdateBoidsDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
 	cfg.separationRate = 0
 	cfg.clampMinSpeed = false
 
-	var m model
-	m.cfg = cfg
-	m.cells.init(30, 20)
-	m.boids = []boid{
+	sim := newSimulation(cfg)
+	boids := []boid{
 		{
 			pos:           Point{x: 1, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -125,12 +118,12 @@ func TestUpdateBoidsDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
 		},
 	}
 
-	m.updateBoids()
+	sim.Step(boids)
 
-	if got, want := m.boids[0].vel, (Point{x: 1, y: 0}); got != want {
+	if got, want := boids[0].vel, (Point{x: 1, y: 0}); got != want {
 		t.Fatalf("boid 0 vel = %+v, want %+v", got, want)
 	}
-	if got, want := m.boids[1].vel, (Point{x: 3, y: 0}); got != want {
+	if got, want := boids[1].vel, (Point{x: 3, y: 0}); got != want {
 		t.Fatalf("boid 1 vel = %+v, want %+v", got, want)
 	}
 }

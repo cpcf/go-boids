@@ -12,6 +12,7 @@ func main() {
 
 	m := model{
 		cfg: cfg,
+		sim: newSimulation(cfg),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
