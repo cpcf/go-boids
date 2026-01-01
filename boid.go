@@ -28,16 +28,17 @@ func effectiveCellsPerBoid(cfg config) int {
 }
 
 func initRandomBoids(cfg config, count int, screenWidth, screenHeight int) []boid {
+	rng := newRandom(cfg)
 	boids := make([]boid, count)
 	for i := range boids {
 		boids[i] = boid{
 			pos: Point{
-				x: rand.Float64() * float64(screenWidth),
-				y: rand.Float64() * float64(screenHeight),
+				x: rng.Float64() * float64(screenWidth),
+				y: rng.Float64() * float64(screenHeight),
 			},
 			vel: Point{
-				x: rand.Float64()*cfg.maxSpeed*2 - cfg.maxSpeed,
-				y: rand.Float64()*cfg.maxSpeed*2 - cfg.maxSpeed,
+				x: rng.Float64()*cfg.maxSpeed*2 - cfg.maxSpeed,
+				y: rng.Float64()*cfg.maxSpeed*2 - cfg.maxSpeed,
 			},
 			maxX:          float64(screenWidth),
 			maxY:          float64(screenHeight),
@@ -46,6 +47,13 @@ func initRandomBoids(cfg config, count int, screenWidth, screenHeight int) []boi
 		}
 	}
 	return boids
+}
+
+func newRandom(cfg config) *rand.Rand {
+	if cfg.seed == nil {
+		return rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
+	}
+	return rand.New(rand.NewPCG(*cfg.seed, *cfg.seed^0x9e3779b97f4a7c15))
 }
 
 func (b *boid) update(boids []boid, cfg config) {

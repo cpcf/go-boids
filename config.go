@@ -21,6 +21,7 @@ type config struct {
 	cohesionRate   float64
 	separationRate float64
 	targetMinSpeed float64
+	seed           *uint64
 }
 
 func defaultConfig() config {
@@ -69,6 +70,12 @@ func loadConfig() config {
 			case *float64:
 				*p, _ = strconv.ParseFloat(v, 64)
 			}
+		}
+	}
+
+	if v := os.Getenv("SEED"); v != "" {
+		if parsed, err := strconv.ParseUint(v, 10, 64); err == nil {
+			cfg.seed = &parsed
 		}
 	}
 

@@ -34,6 +34,7 @@ BOUNCE            = true  # Bounce off walls
 CLAMP_MIN_SPEED   = true  # Sets the minimum speed
 TARGET_MIN_SPEED  = 0.05  # Minimum speed of boid if clamped
 CELLS_PER_BOID    = 75    # Terminal cells per boid; smaller values mean more boids
+SEED              = <unset> # Seed for deterministic initial positions/velocities; use 0 as valid seed
 
 RADIUS            = 7.0   # Tiles from boid that affect it
 MAX_SPEED         = 1.0   # Maximum speed of boid

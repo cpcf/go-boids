@@ -87,6 +87,49 @@ func TestInitBoidsUsesProvidedConfig(t *testing.T) {
 	}
 }
 
+func TestInitRandomBoidsDeterministicWithSeed(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.seed = uint64Ptr(1234)
+
+	gotA := initRandomBoids(cfg, 12, 80, 50)
+	gotB := initRandomBoids(cfg, 12, 80, 50)
+
+	if len(gotA) != len(gotB) {
+		t.Fatalf("len mismatch: %d != %d", len(gotA), len(gotB))
+	}
+
+	for i := range gotA {
+		if gotA[i] != gotB[i] {
+			t.Fatalf("boid[%d] = %+v, want %+v", i, gotA[i], gotB[i])
+		}
+	}
+}
+
+func TestInitRandomBoidsDiffersWithDifferentSeed(t *testing.T) {
+	cfgA := defaultConfig()
+	cfgA.seed = uint64Ptr(1)
+	cfgB := defaultConfig()
+	cfgB.seed = uint64Ptr(2)
+
+	boidsA := initRandomBoids(cfgA, 12, 80, 50)
+	boidsB := initRandomBoids(cfgB, 12, 80, 50)
+
+	differ := false
+	for i := range boidsA {
+		if boidsA[i] != boidsB[i] {
+			differ = true
+			break
+		}
+	}
+	if !differ {
+		t.Fatalf("expected initial boids to differ with different seeds")
+	}
+}
+
+func uint64Ptr(v uint64) *uint64 {
+	return &v
+}
+
 func TestBoidWrapAroundScreen(t *testing.T) {
 	b := boid{
 		nextPos: Point{x: -1, y: 11},

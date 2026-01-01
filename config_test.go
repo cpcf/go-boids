@@ -64,7 +64,8 @@ ADJUST_RATE=0.1
 ALIGNMENT_RATE=1.5
 COHESION_RATE=2
 SEPARATION_RATE=3
-TARGET_MIN_SPEED=0.25`)
+TARGET_MIN_SPEED=0.25
+SEED=123`)
 
 	got := loadConfig()
 
@@ -100,6 +101,37 @@ TARGET_MIN_SPEED=0.25`)
 	}
 	if got.targetMinSpeed != 0.25 {
 		t.Fatalf("targetMinSpeed = %f, want 0.25", got.targetMinSpeed)
+	}
+
+	if got.seed == nil {
+		t.Fatal("seed = <nil>, want non-nil")
+	}
+	if got.seed != nil && *got.seed != 123 {
+		t.Fatalf("seed = %d, want 123", *got.seed)
+	}
+}
+
+func TestLoadConfigReadsZeroSeedFromDotenv(t *testing.T) {
+	configWithCleanEnv(t)
+	configWithDotenv(t, `SEED=0`)
+
+	got := loadConfig()
+
+	if got.seed == nil {
+		t.Fatal("seed = <nil>, want non-nil")
+	}
+	if *got.seed != 0 {
+		t.Fatalf("seed = %d, want 0", *got.seed)
+	}
+}
+
+func TestLoadConfigIgnoresInvalidSeed(t *testing.T) {
+	configWithCleanEnv(t)
+	configWithDotenv(t, `SEED=not-a-seed`)
+
+	got := loadConfig()
+	if got.seed != nil {
+		t.Fatalf("seed = %d, want <nil>", *got.seed)
 	}
 }
 
@@ -229,6 +261,7 @@ func configWithCleanEnv(t *testing.T) {
 		"COHESION_RATE",
 		"SEPARATION_RATE",
 		"TARGET_MIN_SPEED",
+		"SEED",
 	} {
 		t.Setenv(key, "")
 	}
