@@ -30,16 +30,18 @@ func BenchmarkUpdateBoids(b *testing.B) {
 
 	for _, size := range benchmarkSizes {
 		b.Run(size.name, func(b *testing.B) {
-			boids := deterministicBoids(size.width, size.height)
 			sim := newSimulation(cfg)
+			sim.Resize(size.width, size.height)
+			sim.boids = deterministicBoids(size.width, size.height)
 
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				sim.Step(boids)
+				sim.Step()
 			}
 			b.StopTimer()
 
+			boids := sim.Boids()
 			if len(boids) > 0 {
 				benchBoidSink = boids[0]
 			}

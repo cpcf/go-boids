@@ -13,7 +13,7 @@ func TestSimulationStepUsesPreviousFrameState(t *testing.T) {
 	cfg.clampMinSpeed = false
 
 	sim := newSimulation(cfg)
-	boids := []boid{
+	sim.boids = []boid{
 		{
 			pos:           Point{x: 10, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -32,7 +32,8 @@ func TestSimulationStepUsesPreviousFrameState(t *testing.T) {
 		},
 	}
 
-	sim.Step(boids)
+	sim.Step()
+	boids := sim.Boids()
 
 	if got, want := boids[0].vel, (Point{x: 3, y: 0}); got != want {
 		t.Fatalf("boid 0 vel = %+v, want %+v", got, want)
@@ -59,7 +60,7 @@ func TestSimulationStepCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T
 	cfg.clampMinSpeed = false
 
 	sim := newSimulation(cfg)
-	boids := padBoidsForSpatialGridPath([]boid{
+	sim.boids = padBoidsForSpatialGridPath([]boid{
 		{
 			pos:           Point{x: 9.9, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -78,7 +79,8 @@ func TestSimulationStepCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T
 		},
 	})
 
-	sim.Step(boids)
+	sim.Step()
+	boids := sim.Boids()
 
 	if got, want := boids[0].vel, (Point{x: 3, y: 0}); got != want {
 		t.Fatalf("boid 0 vel = %+v, want %+v", got, want)
@@ -99,7 +101,7 @@ func TestSimulationStepDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
 	cfg.clampMinSpeed = false
 
 	sim := newSimulation(cfg)
-	boids := []boid{
+	sim.boids = []boid{
 		{
 			pos:           Point{x: 1, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -118,7 +120,8 @@ func TestSimulationStepDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
 		},
 	}
 
-	sim.Step(boids)
+	sim.Step()
+	boids := sim.Boids()
 
 	if got, want := boids[0].vel, (Point{x: 1, y: 0}); got != want {
 		t.Fatalf("boid 0 vel = %+v, want %+v", got, want)
@@ -140,4 +143,34 @@ func padBoidsForSpatialGridPath(boids []boid) []boid {
 		})
 	}
 	return boids
+}
+
+func TestSimulationResizeConfiguresDimensionsAndBoids(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.cellsPerBoid = 100
+
+	sim := newSimulation(cfg)
+	width, height := 120, 40
+	sim.Resize(width, height)
+
+	if got, want := sim.width, width; got != want {
+		t.Fatalf("sim.width = %v, want %v", got, want)
+	}
+	if got, want := sim.height, height; got != want {
+		t.Fatalf("sim.height = %v, want %v", got, want)
+	}
+
+	wantCount := width*height/effectiveCellsPerBoid(cfg) + 1
+	if got := len(sim.Boids()); got != wantCount {
+		t.Fatalf("len(sim.Boids()) = %v, want %v", got, wantCount)
+	}
+
+	for _, b := range sim.Boids() {
+		if got, want := b.maxX, float64(width); got != want {
+			t.Fatalf("boid maxX = %v, want %v", got, want)
+		}
+		if got, want := b.maxY, float64(height); got != want {
+			t.Fatalf("boid maxY = %v, want %v", got, want)
+		}
+	}
 }

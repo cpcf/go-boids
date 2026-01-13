@@ -22,7 +22,6 @@ type model struct {
 	cfg   config
 	sim   simulation
 	cells cellbuffer
-	boids []boid
 }
 
 func (m model) Init() tea.Cmd {
@@ -36,8 +35,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.cfg = loadConfig()
 		m.sim = newSimulation(m.cfg)
+		m.sim.Resize(msg.Width, msg.Height)
 		m.cells.init(msg.Width, msg.Height)
-		m.boids = initBoidsOnScreenSize(m.cfg, msg.Width, msg.Height)
 		return m, nil
 	case frameMsg:
 		if !m.cells.ready() {
@@ -57,10 +56,10 @@ func (m model) View() string {
 }
 
 func (m *model) updateBoids() {
-	m.sim.Step(m.boids)
+	m.sim.Step()
 
-	for i := range m.boids {
-		drawTriangle(&m.cells, m.boids[i].pos, m.boids[i].forward)
+	for _, boid := range m.sim.Boids() {
+		drawTriangle(&m.cells, boid.pos, boid.forward)
 	}
 }
 
