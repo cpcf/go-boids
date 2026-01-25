@@ -23,6 +23,22 @@ go get github.com/cpcf/go-boids
 go-boids
 ```
 
+### Headless mode
+
+Run a deterministic simulation offline and print one summary line:
+
+```bash
+go-boids --headless --frames 10 --width 80 --height 24
+```
+
+Example output:
+
+```text
+frames=10 width=80 height=24 boids=26 avg_speed=... min_speed=... max_speed=... centroid_x=... centroid_y=...
+```
+
+Set `SEED` in `.env` to make outputs reproducible between runs.
+
 ## Parameters
 Configurable parameters are set in the `.env` file. Resize window or restart to apply changes.
 
