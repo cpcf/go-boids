@@ -174,3 +174,27 @@ func TestSimulationResizeConfiguresDimensionsAndBoids(t *testing.T) {
 		}
 	}
 }
+
+func TestSimulationSetConfigUpdatesConfigAndGridCellSizeWithoutReset(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.seed = uint64Ptr(123)
+	sim := newSimulation(cfg)
+	sim.Resize(20, 10)
+
+	before := copyBoidsForTest(sim.Boids())
+
+	updatedCfg := cfg
+	updatedCfg.radius = cfg.radius + 2.5
+	updatedCfg.maxSpeed = cfg.maxSpeed + 0.3
+	sim.SetConfig(updatedCfg)
+
+	if sim.cfg != updatedCfg {
+		t.Fatalf("sim.cfg = %+v, want %+v", sim.cfg, updatedCfg)
+	}
+	if got, want := sim.nearbyGrid.cellSize, updatedCfg.radius; got != want {
+		t.Fatalf("nearby grid cell size = %.6f, want %.6f", got, want)
+	}
+	if !boidsEqualForTest(before, sim.Boids()) {
+		t.Fatal("SetConfig should not reset boids")
+	}
+}

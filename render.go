@@ -37,7 +37,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case tea.KeyRunes:
 			if len(msg.Runes) == 1 {
-				switch msg.Runes[0] {
+				key := msg.Runes[0]
+				switch key {
 				case 'q':
 					return m, tea.Quit
 				case ' ':
@@ -50,6 +51,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				case 'r':
 					m.resetSimulation()
+					return m, nil
+				}
+
+				if adjustment, ok := runtimeAdjustmentForKey(key); ok {
+					m.cfg = applyRuntimeAdjustment(m.cfg, adjustment)
+					m.sim.SetConfig(m.cfg)
+					if m.cells.ready() {
+						m.stepAndDraw(false)
+					}
 					return m, nil
 				}
 			}

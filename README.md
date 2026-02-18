@@ -39,6 +39,17 @@ frames=10 width=80 height=24 boids=26 avg_speed=... min_speed=... max_speed=... 
 
 Set `SEED` in `.env` to make outputs reproducible between runs.
 
+### Runtime controls
+
+During interactive terminal mode:
+
+- `[` decreases `RADIUS` by `0.5`
+- `]` increases `RADIUS` by `0.5`
+- `-` decreases `MAX_SPEED` by `0.1`
+- `=` increases `MAX_SPEED` by `0.1`
+
+These runtime adjustments apply immediately and persist until the simulation is resized or restarted.
+
 ## Parameters
 Configurable parameters are set in the `.env` file. Resize window or restart to apply changes.
 

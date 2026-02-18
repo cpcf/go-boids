@@ -167,7 +167,14 @@ func TestModelQuitKeysQuit(t *testing.T) {
 }
 
 func TestModelOtherKeysAreIgnored(t *testing.T) {
-	m := model{cfg: defaultConfig()}
+	cfg := defaultConfig()
+	m := model{
+		cfg: cfg,
+		sim: newSimulation(cfg),
+	}
+	m.cells.init(20, 10)
+	m.sim.Resize(20, 10)
+	beforeBoids := copyBoidsForTest(m.sim.Boids())
 
 	updated, cmd := m.Update(tea.KeyMsg{
 		Type:  tea.KeyRunes,
@@ -176,8 +183,104 @@ func TestModelOtherKeysAreIgnored(t *testing.T) {
 	if cmd != nil {
 		t.Fatalf("Update(unhandled key) returned cmd %T, want nil", cmd)
 	}
-	if got := updated.(model); got.paused != m.paused {
+	got := updated.(model)
+	if got.paused != m.paused {
 		t.Fatalf("paused = %v, want %v", got.paused, m.paused)
+	}
+	if got.cfg != m.cfg {
+		t.Fatalf("cfg changed for unknown key: got %+v want %+v", got.cfg, m.cfg)
+	}
+	if got.sim.cfg != m.sim.cfg {
+		t.Fatalf("sim cfg changed for unknown key: got %+v want %+v", got.sim.cfg, m.sim.cfg)
+	}
+	if !boidsEqualForTest(beforeBoids, got.sim.Boids()) {
+		t.Fatal("boids changed for unknown key")
+	}
+}
+
+func TestModelRuntimeAdjustmentKeysUpdateModelAndSimulationConfig(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.radius = 1.0
+	cfg.maxSpeed = 0.2
+
+	m := model{
+		cfg: cfg,
+		sim: newSimulation(cfg),
+	}
+	m.cells.init(20, 10)
+	m.sim.Resize(20, 10)
+	beforeBoids := copyBoidsForTest(m.sim.Boids())
+
+	tests := []struct {
+		name         string
+		key          rune
+		wantRadius   float64
+		wantMaxSpeed float64
+	}{
+		{
+			name:         "decrease radius",
+			key:          '[',
+			wantRadius:   0.5,
+			wantMaxSpeed: 0.2,
+		},
+		{
+			name:         "decrease radius clamp",
+			key:          '[',
+			wantRadius:   minRuntimeRadius,
+			wantMaxSpeed: 0.2,
+		},
+		{
+			name:         "decrease max speed",
+			key:          '-',
+			wantRadius:   minRuntimeRadius,
+			wantMaxSpeed: 0.1,
+		},
+		{
+			name:         "decrease max speed clamp",
+			key:          '-',
+			wantRadius:   minRuntimeRadius,
+			wantMaxSpeed: minRuntimeMaxSpeed,
+		},
+		{
+			name:         "increase radius",
+			key:          ']',
+			wantRadius:   1.0,
+			wantMaxSpeed: minRuntimeMaxSpeed,
+		},
+		{
+			name:         "increase max speed",
+			key:          '=',
+			wantRadius:   1.0,
+			wantMaxSpeed: 0.2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m = modelWithUpdate(t, m, tea.KeyMsg{
+				Type:  tea.KeyRunes,
+				Runes: []rune{tt.key},
+			})
+			if !almostEqualFloatForTest(m.cfg.radius, tt.wantRadius) {
+				t.Fatalf("model radius = %.6f, want %.6f", m.cfg.radius, tt.wantRadius)
+			}
+			if !almostEqualFloatForTest(m.cfg.maxSpeed, tt.wantMaxSpeed) {
+				t.Fatalf("model maxSpeed = %.6f, want %.6f", m.cfg.maxSpeed, tt.wantMaxSpeed)
+			}
+			if !almostEqualFloatForTest(m.sim.cfg.radius, tt.wantRadius) {
+				t.Fatalf("simulation radius = %.6f, want %.6f", m.sim.cfg.radius, tt.wantRadius)
+			}
+			if !almostEqualFloatForTest(m.sim.cfg.maxSpeed, tt.wantMaxSpeed) {
+				t.Fatalf("simulation maxSpeed = %.6f, want %.6f", m.sim.cfg.maxSpeed, tt.wantMaxSpeed)
+			}
+			if !almostEqualFloatForTest(m.sim.nearbyGrid.cellSize, tt.wantRadius) {
+				t.Fatalf("nearby grid cell size = %.6f, want %.6f", m.sim.nearbyGrid.cellSize, tt.wantRadius)
+			}
+		})
+	}
+
+	if !boidsEqualForTest(beforeBoids, m.sim.Boids()) {
+		t.Fatal("runtime adjustments should redraw without stepping boids")
 	}
 }
 

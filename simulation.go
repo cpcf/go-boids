@@ -25,6 +25,11 @@ func (s *simulation) Resize(width, height int) {
 	s.boids = initBoidsOnScreenSize(s.cfg, width, height)
 }
 
+func (s *simulation) SetConfig(cfg config) {
+	s.cfg = cfg
+	s.nearbyGrid.cellSize = cfg.radius
+}
+
 func (s *simulation) Step() {
 	s.previousBoids = append(s.previousBoids[:0], s.boids...)
 
