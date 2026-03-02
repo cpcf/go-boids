@@ -43,6 +43,10 @@ Set `SEED` in `.env` to make outputs reproducible between runs.
 
 During interactive terminal mode:
 
+- Status/help output uses the last terminal row.
+- `q` quits
+- `space` pauses/resumes
+- `.` advances a single step while paused
 - `[` decreases `RADIUS` by `0.5`
 - `]` increases `RADIUS` by `0.5`
 - `-` decreases `MAX_SPEED` by `0.1`

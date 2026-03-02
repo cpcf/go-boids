@@ -2,6 +2,7 @@ package main
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -281,6 +282,119 @@ func TestModelRuntimeAdjustmentKeysUpdateModelAndSimulationConfig(t *testing.T) 
 
 	if !boidsEqualForTest(beforeBoids, m.sim.Boids()) {
 		t.Fatal("runtime adjustments should redraw without stepping boids")
+	}
+}
+
+func TestModelViewIncludesStatusLine(t *testing.T) {
+	m := model{
+		cfg: defaultConfig(),
+		sim: newSimulation(defaultConfig()),
+	}
+	m.cells.init(20, 9)
+	m.sim.Resize(20, 9)
+	m.drawBoids()
+
+	got := m.View()
+	lines := strings.Split(got, "\n")
+	if len(lines) < 2 {
+		t.Fatalf("View() returned %q, want multiple lines", got)
+	}
+
+	gotStatus := lines[len(lines)-1]
+	wantStatus := fitStatusLine(m.statusLine(), 20)
+	if gotStatus != wantStatus {
+		t.Fatalf("View() status line = %q, want %q", gotStatus, wantStatus)
+	}
+}
+
+func TestModelWindowSizeReservesStatusLine(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.seed = uint64Ptr(123)
+	m := model{
+		cfg: cfg,
+		sim: newSimulation(cfg),
+	}
+
+	m = modelWithUpdate(t, m, tea.WindowSizeMsg{Width: 20, Height: 10})
+
+	if got, want := m.cells.height(), 9; got != want {
+		t.Fatalf("cellbuffer height = %d, want %d", got, want)
+	}
+	if got, want := m.sim.height, 9; got != want {
+		t.Fatalf("simulation height = %d, want %d", got, want)
+	}
+}
+
+func TestModelWindowSizeOneRowShowsOnlyStatus(t *testing.T) {
+	cfg := defaultConfig()
+	m := model{
+		cfg: cfg,
+		sim: newSimulation(cfg),
+	}
+
+	m = modelWithUpdate(t, m, tea.WindowSizeMsg{Width: 20, Height: 1})
+
+	if got, want := m.cells.height(), 0; got != want {
+		t.Fatalf("cellbuffer height = %d, want %d", got, want)
+	}
+	if got, want := m.sim.height, 0; got != want {
+		t.Fatalf("simulation height = %d, want %d", got, want)
+	}
+	if got := strings.Count(m.View(), "\n"); got != 0 {
+		t.Fatalf("one-row View() should not contain newlines, got %q", m.View())
+	}
+}
+
+func TestModelViewStatusLineReflectsPausedState(t *testing.T) {
+	cfg := defaultConfig()
+	m := model{
+		cfg: cfg,
+		sim: newSimulation(cfg),
+	}
+	m.cells.init(80, 10)
+	m.sim.Resize(80, 10)
+	m.drawBoids()
+
+	running := m.View()
+	runningStatus := strings.Split(running, "\n")[len(strings.Split(running, "\n"))-1]
+	if !strings.Contains(runningStatus, "space pause") {
+		t.Fatalf("running status line missing pause hint: %q", runningStatus)
+	}
+	if strings.Contains(runningStatus, ". step") {
+		t.Fatalf("running status line should not include single-step hint: %q", runningStatus)
+	}
+
+	m.paused = true
+	paused := m.View()
+	pausedStatus := strings.Split(paused, "\n")[len(strings.Split(paused, "\n"))-1]
+	if !strings.Contains(pausedStatus, "space resume") {
+		t.Fatalf("paused status line missing resume hint: %q", pausedStatus)
+	}
+	if !strings.Contains(pausedStatus, ". step") {
+		t.Fatalf("paused status line missing single-step hint: %q", pausedStatus)
+	}
+
+	if runningStatus == pausedStatus {
+		t.Fatalf("expected status lines to differ between running and paused")
+	}
+}
+
+func TestStatusLineFitsWidth(t *testing.T) {
+	status := "q quit | space pause | r reset | [/] radius 7.0 | -/= max 1.0"
+
+	full := fitStatusLine(status, len(status))
+	if full != status {
+		t.Fatalf("expected full width status to stay unchanged, got %q", full)
+	}
+
+	truncated := fitStatusLine(status, 12)
+	if truncated != "q quit | spa" {
+		t.Fatalf("expected truncated status, got %q", truncated)
+	}
+
+	empty := fitStatusLine(status, 0)
+	if empty != "" {
+		t.Fatalf("expected empty status when width <= 0, got %q", empty)
 	}
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -71,8 +72,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.cfg = loadConfig()
 		m.sim = newSimulation(m.cfg)
-		m.sim.Resize(msg.Width, msg.Height)
-		m.cells.init(msg.Width, msg.Height)
+		displayHeight := msg.Height - 1
+		if displayHeight < 0 {
+			displayHeight = 0
+		}
+		m.sim.Resize(msg.Width, displayHeight)
+		m.cells.init(msg.Width, displayHeight)
 		return m, nil
 	case frameMsg:
 		if !m.cells.ready() {
@@ -87,7 +92,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return m.cells.String()
+	status := fitStatusLine(m.statusLine(), m.cells.width())
+	view := m.cells.String()
+	if view == "" {
+		return status
+	}
+	return view + "\n" + status
 }
 
 func (m *model) stepAndDraw(step bool) {
@@ -112,6 +122,26 @@ func (m *model) resetSimulation() {
 
 func drawTriangle(cb *cellbuffer, centre, dir Point) {
 	cb.set(int(centre.x), int(centre.y), triangleRuneTable[dir])
+}
+
+func (m model) statusLine() string {
+	resumeOrPause := "pause"
+	extras := " | r reset | [/] radius %.1f | -/= max %.1f"
+	if m.paused {
+		resumeOrPause = "resume"
+		extras = " | . step | r reset | [/] radius %.1f | -/= max %.1f"
+	}
+	return "q quit | space " + resumeOrPause + fmt.Sprintf(extras, m.cfg.radius, m.cfg.maxSpeed)
+}
+
+func fitStatusLine(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if len(s) <= width {
+		return s
+	}
+	return s[:width]
 }
 
 var triangleRuneTable = map[Point]rune{
