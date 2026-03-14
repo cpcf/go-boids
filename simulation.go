@@ -6,6 +6,7 @@ type simulation struct {
 	cfg           config
 	width, height int
 	boids         []boid
+	frames        int
 
 	previousBoids    []boid
 	nearbyGrid       spatialGrid
@@ -22,6 +23,7 @@ func newSimulation(cfg config) simulation {
 func (s *simulation) Resize(width, height int) {
 	s.width = width
 	s.height = height
+	s.frames = 0
 	s.boids = initBoidsOnScreenSize(s.cfg, width, height)
 }
 
@@ -53,6 +55,8 @@ func (s *simulation) Step() {
 	for i := range s.boids {
 		s.boids[i].move()
 	}
+
+	s.frames++
 }
 
 func (s *simulation) Boids() []boid {

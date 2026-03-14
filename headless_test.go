@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"math"
 	"strings"
 	"testing"
 )
@@ -66,7 +65,8 @@ func TestRunHeadlessZeroFramesDoesNotStep(t *testing.T) {
 
 	sim := newSimulation(cfg)
 	sim.Resize(opts.width, opts.height)
-	expected := summarizeBoidsForTest(opts, sim.Boids())
+	expected := sim.Stats()
+	expected.frames = opts.frames
 
 	if summary != expected {
 		t.Fatalf("summary = %#v, want %#v", summary, expected)
@@ -115,7 +115,7 @@ func TestRunHeadlessSeededRunIsStable(t *testing.T) {
 }
 
 func TestWriteHeadlessSummaryFormat(t *testing.T) {
-	summary := headlessSummary{
+	summary := simulationStats{
 		frames:    10,
 		width:     80,
 		height:    24,
@@ -143,53 +143,5 @@ func TestWriteHeadlessSummaryFormat(t *testing.T) {
 	}
 	if strings.Count(got, "\n") != 1 {
 		t.Fatalf("summary should contain one newline, got %q", got)
-	}
-}
-
-func summarizeBoidsForTest(opts headlessOptions, boids []boid) headlessSummary {
-	boidCount := len(boids)
-	if boidCount == 0 {
-		return headlessSummary{
-			frames:    opts.frames,
-			width:     opts.width,
-			height:    opts.height,
-			boids:     0,
-			avgSpeed:  0,
-			minSpeed:  0,
-			maxSpeed:  0,
-			centroidX: 0,
-			centroidY: 0,
-		}
-	}
-
-	totalSpeed := 0.0
-	totalX := 0.0
-	totalY := 0.0
-	minSpeed := math.Inf(1)
-	maxSpeed := 0.0
-
-	for _, b := range boids {
-		speed := math.Hypot(b.vel.x, b.vel.y)
-		totalSpeed += speed
-		totalX += b.pos.x
-		totalY += b.pos.y
-		if speed < minSpeed {
-			minSpeed = speed
-		}
-		if speed > maxSpeed {
-			maxSpeed = speed
-		}
-	}
-
-	return headlessSummary{
-		frames:    opts.frames,
-		width:     opts.width,
-		height:    opts.height,
-		boids:     boidCount,
-		avgSpeed:  totalSpeed / float64(boidCount),
-		minSpeed:  minSpeed,
-		maxSpeed:  maxSpeed,
-		centroidX: totalX / float64(boidCount),
-		centroidY: totalY / float64(boidCount),
 	}
 }

@@ -16,6 +16,7 @@ var (
 	benchCountSink  int
 	benchStringSink string
 	benchBoidSink   boid
+	benchStatsSink  simulationStats
 )
 
 func BenchmarkUpdateBoids(b *testing.B) {
@@ -44,6 +45,31 @@ func BenchmarkUpdateBoids(b *testing.B) {
 			boids := sim.Boids()
 			if len(boids) > 0 {
 				benchBoidSink = boids[0]
+			}
+		})
+	}
+}
+
+func BenchmarkSimulationStats(b *testing.B) {
+	cfg := defaultConfig()
+	cfg.radius = 7
+	cfg.maxSpeed = 0.5
+	cfg.adjustRate = 0.025
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 1
+	cfg.separationRate = 1
+	cfg.targetMinSpeed = 0.01
+
+	for _, size := range benchmarkSizes {
+		b.Run(size.name, func(b *testing.B) {
+			sim := newSimulation(cfg)
+			sim.Resize(size.width, size.height)
+			sim.boids = deterministicBoids(size.width, size.height)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				benchStatsSink = sim.Stats()
 			}
 		})
 	}
