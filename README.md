@@ -47,6 +47,7 @@ During interactive terminal mode:
 - `q` quits
 - `space` pauses/resumes
 - `.` advances a single step while paused
+- `s` toggles the status line between help and simulation stats
 - `[` decreases `RADIUS` by `0.5`
 - `]` increases `RADIUS` by `0.5`
 - `-` decreases `MAX_SPEED` by `0.1`

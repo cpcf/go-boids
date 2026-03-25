@@ -170,12 +170,14 @@ func TestModelQuitKeysQuit(t *testing.T) {
 func TestModelOtherKeysAreIgnored(t *testing.T) {
 	cfg := defaultConfig()
 	m := model{
-		cfg: cfg,
-		sim: newSimulation(cfg),
+		cfg:       cfg,
+		sim:       newSimulation(cfg),
+		showStats: true,
 	}
 	m.cells.init(20, 10)
 	m.sim.Resize(20, 10)
 	beforeBoids := copyBoidsForTest(m.sim.Boids())
+	beforeShowStats := m.showStats
 
 	updated, cmd := m.Update(tea.KeyMsg{
 		Type:  tea.KeyRunes,
@@ -188,6 +190,9 @@ func TestModelOtherKeysAreIgnored(t *testing.T) {
 	if got.paused != m.paused {
 		t.Fatalf("paused = %v, want %v", got.paused, m.paused)
 	}
+	if got.showStats != beforeShowStats {
+		t.Fatalf("showStats = %v, want %v", got.showStats, beforeShowStats)
+	}
 	if got.cfg != m.cfg {
 		t.Fatalf("cfg changed for unknown key: got %+v want %+v", got.cfg, m.cfg)
 	}
@@ -196,6 +201,69 @@ func TestModelOtherKeysAreIgnored(t *testing.T) {
 	}
 	if !boidsEqualForTest(beforeBoids, got.sim.Boids()) {
 		t.Fatal("boids changed for unknown key")
+	}
+}
+
+func TestModelStatsKeyTogglesStatusLine(t *testing.T) {
+	cfg := defaultConfig()
+	m := model{
+		cfg: cfg,
+		sim: newSimulation(cfg),
+	}
+	m.cells.init(20, 10)
+	m.sim.Resize(20, 10)
+	m.drawBoids()
+
+	initialStatus := m.statusLine()
+	if !strings.Contains(initialStatus, "s stats") {
+		t.Fatalf("initial status line should expose stats toggle: %q", initialStatus)
+	}
+	if strings.Contains(initialStatus, "frame ") {
+		t.Fatalf("initial status line should be help mode: %q", initialStatus)
+	}
+
+	updated := modelWithUpdate(t, m, tea.KeyMsg{
+		Type:  tea.KeyRunes,
+		Runes: []rune{'s'},
+	})
+	if !updated.showStats {
+		t.Fatal("pressing s should enable stats mode")
+	}
+
+	statsStatus := updated.statusLine()
+	if !strings.Contains(statsStatus, "| s help | frame ") {
+		t.Fatalf("stats status line should include frame field: %q", statsStatus)
+	}
+
+	updated = modelWithUpdate(t, updated, tea.KeyMsg{
+		Type:  tea.KeyRunes,
+		Runes: []rune{'s'},
+	})
+	if updated.showStats {
+		t.Fatal("pressing s again should disable stats mode")
+	}
+	if updated.statusLine() != initialStatus {
+		t.Fatalf("toggled status line should return to help mode: %q vs %q", updated.statusLine(), initialStatus)
+	}
+}
+
+func TestStatsStatusLineUsesSimulationStats(t *testing.T) {
+	stats := simulationStats{
+		frames:    42,
+		width:     80,
+		height:    23,
+		boids:     50,
+		avgSpeed:  0.833,
+		minSpeed:  0.414,
+		maxSpeed:  1.2,
+		centroidX: 39.24,
+		centroidY: 11.44,
+	}
+
+	got := statsStatusLine(stats)
+	want := "q quit | s help | frame 42 | size 80x23 | boids 50 | speed avg/min/max 0.83/0.41/1.20 | center 39.2,11.4"
+	if got != want {
+		t.Fatalf("statsStatusLine(%+v) = %q, want %q", stats, got, want)
 	}
 }
 
@@ -380,7 +448,7 @@ func TestModelViewStatusLineReflectsPausedState(t *testing.T) {
 }
 
 func TestStatusLineFitsWidth(t *testing.T) {
-	status := "q quit | space pause | r reset | [/] radius 7.0 | -/= max 1.0"
+	status := "q quit | space pause | s stats | r reset | [/] radius 7.0 | -/= max 1.0"
 
 	full := fitStatusLine(status, len(status))
 	if full != status {

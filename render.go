@@ -20,10 +20,11 @@ func animate(cfg config) tea.Cmd {
 }
 
 type model struct {
-	cfg    config
-	sim    simulation
-	cells  cellbuffer
-	paused bool
+	cfg       config
+	sim       simulation
+	cells     cellbuffer
+	paused    bool
+	showStats bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -42,6 +43,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch key {
 				case 'q':
 					return m, tea.Quit
+				case 's':
+					m.showStats = !m.showStats
+					return m, nil
 				case ' ':
 					m.paused = !m.paused
 					return m, nil
@@ -125,13 +129,35 @@ func drawTriangle(cb *cellbuffer, centre, dir Point) {
 }
 
 func (m model) statusLine() string {
+	if m.showStats {
+		return statsStatusLine(m.sim.Stats())
+	}
+	return m.helpStatusLine()
+}
+
+func (m model) helpStatusLine() string {
 	resumeOrPause := "pause"
-	extras := " | r reset | [/] radius %.1f | -/= max %.1f"
+	extras := " | s stats | r reset | [/] radius %.1f | -/= max %.1f"
 	if m.paused {
 		resumeOrPause = "resume"
-		extras = " | . step | r reset | [/] radius %.1f | -/= max %.1f"
+		extras = " | . step | s stats | r reset | [/] radius %.1f | -/= max %.1f"
 	}
 	return "q quit | space " + resumeOrPause + fmt.Sprintf(extras, m.cfg.radius, m.cfg.maxSpeed)
+}
+
+func statsStatusLine(stats simulationStats) string {
+	return fmt.Sprintf(
+		"q quit | s help | frame %d | size %dx%d | boids %d | speed avg/min/max %.2f/%.2f/%.2f | center %.1f,%.1f",
+		stats.frames,
+		stats.width,
+		stats.height,
+		stats.boids,
+		stats.avgSpeed,
+		stats.minSpeed,
+		stats.maxSpeed,
+		stats.centroidX,
+		stats.centroidY,
+	)
 }
 
 func fitStatusLine(s string, width int) string {
