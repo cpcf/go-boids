@@ -11,6 +11,7 @@ const defaultCellsPerBoid = 75
 
 type config struct {
 	fps            int
+	renderFps      int
 	bounce         bool
 	clampMinSpeed  bool
 	cellsPerBoid   int
@@ -27,6 +28,7 @@ type config struct {
 func defaultConfig() config {
 	return config{
 		fps:            120,
+		renderFps:      60,
 		bounce:         true,
 		clampMinSpeed:  true,
 		cellsPerBoid:   defaultCellsPerBoid,
@@ -48,6 +50,7 @@ func loadConfig() config {
 
 	envVars := map[string]interface{}{
 		"FPS":              &cfg.fps,
+		"RENDER_FPS":       &cfg.renderFps,
 		"BOUNCE":           &cfg.bounce,
 		"CLAMP_MIN_SPEED":  &cfg.clampMinSpeed,
 		"CELLS_PER_BOID":   &cfg.cellsPerBoid,

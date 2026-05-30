@@ -5,10 +5,12 @@ import (
 	"testing"
 )
 
-var benchmarkSizes = []struct {
+type benchmarkSize struct {
 	name          string
 	width, height int
-}{
+}
+
+var benchmarkSizes = []benchmarkSize{
 	{name: "120x40", width: 120, height: 40},
 	{name: "180x60", width: 180, height: 60},
 	{name: "240x80", width: 240, height: 80},
@@ -34,6 +36,55 @@ func BenchmarkUpdateBoids(b *testing.B) {
 
 	for _, size := range benchmarkSizes {
 		b.Run(size.name, func(b *testing.B) {
+			sim := newSimulation(cfg)
+			sim.Resize(size.width, size.height)
+			sim.setBoids(deterministicBoids(size.width, size.height))
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				sim.Step()
+			}
+			b.StopTimer()
+
+			if len(sim.x) > 0 {
+				benchPointSink = Point{x: sim.x[0], y: sim.y[0]}
+			}
+		})
+	}
+}
+
+func BenchmarkUpdateBoidsLargeFlock(b *testing.B) {
+	cfg := defaultConfig()
+	cfg.radius = 7
+	cfg.maxSpeed = 0.5
+	cfg.adjustRate = 0.025
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 1
+	cfg.separationRate = 1
+	cfg.targetMinSpeed = 0.01
+
+	for _, size := range []benchmarkSize{
+		{name: "512x512", width: 512, height: 512},
+		{name: "1024x512", width: 1024, height: 512},
+	} {
+		b.Run(size.name+"/sequential", func(b *testing.B) {
+			sim := newSimulation(cfg)
+			sim.Resize(size.width, size.height)
+			sim.setBoids(deterministicBoids(size.width, size.height))
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				sim.stepWithWorkerCount(1)
+			}
+			b.StopTimer()
+
+			if len(sim.x) > 0 {
+				benchPointSink = Point{x: sim.x[0], y: sim.y[0]}
+			}
+		})
+		b.Run(size.name+"/auto", func(b *testing.B) {
 			sim := newSimulation(cfg)
 			sim.Resize(size.width, size.height)
 			sim.setBoids(deterministicBoids(size.width, size.height))

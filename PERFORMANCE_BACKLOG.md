@@ -39,6 +39,11 @@ manual testing in the terminal.
   - Keep the implementation testable without requiring a real terminal.
   - Added an allocation-free sparse renderer and `BenchmarkSparseANSIFrame`.
 
+- [x] Remove maps from sparse rendering.
+  - Track dense cell state plus touched indexes to avoid hashing every boid
+    and every changed cell.
+  - Preserve sparse ANSI output and collision behavior.
+
 - [x] Move interactive mode off the Bubble Tea full-view render path.
   - Use the sparse renderer for terminal output.
   - Preserve quit, pause, single-step, stats/help, reset, radius/max-speed
@@ -64,14 +69,19 @@ manual testing in the terminal.
   - Made SoA buffers authoritative, kept `Boids` as a lazy compatibility view,
     and moved stats/sparse rendering to direct SoA reads.
 
-- [ ] Gate parallel stepping for large flocks.
-  - Add a fixed worker split only above a measured threshold.
+- [x] Gate parallel stepping for large flocks.
+  - Add a fixed worker split (4 workers) only above a measured threshold (2048 boids).
   - Keep deterministic frame semantics and avoid overhead for small flocks.
 
-- [ ] Consider approximate separation math.
+- [x] Consider approximate separation math.
   - Replace per-neighbor `sqrt` only if the changed flock behavior is acceptable
     and benchmarks show a meaningful gain.
+  - Kept exact `sqrt` for default-size flocks, but use deterministic inverse
+    square-root approximation on large grid workloads where it improves the
+    parallel branch.
 
-- [ ] Decouple simulation and render cadence.
+- [x] Decouple simulation and render cadence.
   - Allow rendering to run at a lower or adaptive cadence than simulation when
     terminal output is the bottleneck.
+  - Added `RENDER_FPS`, with simulation still stepping at `FPS` and the raw
+    terminal loop rendering only when pending frames reach the render cadence.

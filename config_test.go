@@ -11,6 +11,7 @@ func TestDefaultConfigReturnsExpectedValues(t *testing.T) {
 
 	want := config{
 		fps:            120,
+		renderFps:      60,
 		bounce:         true,
 		clampMinSpeed:  true,
 		cellsPerBoid:   defaultCellsPerBoid,
@@ -33,6 +34,7 @@ func TestLoadConfigDefaultsWithoutDotenv(t *testing.T) {
 	configWithNoDotenv(t)
 
 	t.Setenv("FPS", "999")
+	t.Setenv("RENDER_FPS", "888")
 	t.Setenv("BOUNCE", "false")
 	t.Setenv("CLAMP_MIN_SPEED", "false")
 	t.Setenv("CELLS_PER_BOID", "42")
@@ -55,6 +57,7 @@ func TestLoadConfigDefaultsWithoutDotenv(t *testing.T) {
 func TestLoadConfigReadsValuesFromDotenv(t *testing.T) {
 	configWithCleanEnv(t)
 	configWithDotenv(t, `FPS=240
+RENDER_FPS=45
 BOUNCE=false
 CLAMP_MIN_SPEED=false
 CELLS_PER_BOID=64
@@ -71,6 +74,9 @@ SEED=123`)
 
 	if got.fps != 240 {
 		t.Fatalf("fps = %d, want 240", got.fps)
+	}
+	if got.renderFps != 45 {
+		t.Fatalf("renderFps = %d, want 45", got.renderFps)
 	}
 	if got.bounce != false {
 		t.Fatalf("bounce = %v, want false", got.bounce)
@@ -162,6 +168,7 @@ CELLS_PER_BOID=`)
 func TestLoadConfigIgnoresParseErrors(t *testing.T) {
 	configWithCleanEnv(t)
 	configWithDotenv(t, `FPS=bad-int
+RENDER_FPS=bad-int
 BOUNCE=bad-bool
 CLAMP_MIN_SPEED=bad-bool
 CELLS_PER_BOID=bad-int
@@ -177,6 +184,9 @@ TARGET_MIN_SPEED=bad-float`)
 
 	if got.fps != 0 {
 		t.Fatalf("fps = %d, want 0", got.fps)
+	}
+	if got.renderFps != 0 {
+		t.Fatalf("renderFps = %d, want 0", got.renderFps)
 	}
 	if got.bounce != false {
 		t.Fatalf("bounce = %v, want false", got.bounce)
@@ -251,6 +261,7 @@ func configWithCleanEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
 		"FPS",
+		"RENDER_FPS",
 		"BOUNCE",
 		"CLAMP_MIN_SPEED",
 		"CELLS_PER_BOID",

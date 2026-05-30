@@ -1,8 +1,15 @@
 package main
 
-import "math"
+import (
+	"math"
+	"sync"
+)
 
 const spatialGridBoidThreshold = 128
+const parallelSteppingBoidThreshold = 2048
+const parallelSteppingWorkerCount = 4
+const separationScale = 1.0 / 1.5
+const fastInvSqrt64Magic = 0x5fe6eb50c7b537a9
 
 type simulation struct {
 	cfg    config
@@ -51,6 +58,10 @@ func (s *simulation) SetConfig(cfg config) {
 }
 
 func (s *simulation) Step() {
+	s.stepWithWorkerCount(0)
+}
+
+func (s *simulation) stepWithWorkerCount(workerCount int) {
 	if len(s.x) == 0 {
 		s.frames++
 		return
@@ -73,11 +84,14 @@ func (s *simulation) Step() {
 	} else {
 		s.nearbyGrid.setCellSize(s.cfg.radius)
 		s.nearbyGrid.rebuildFromPositions(s.x, s.y)
-
-		for i := range s.x {
-			sep, avgPos, avgVel, count := s.measureNearbyWithGrid(i, s.cfg)
-			s.applyAccelerationAndMove(i, sep, avgPos, avgVel, count, s.cfg)
+		if workerCount <= 0 {
+			if len(s.x) >= parallelSteppingBoidThreshold {
+				workerCount = parallelSteppingWorkerCount
+			} else {
+				workerCount = 1
+			}
 		}
+		s.stepWithGridWorkers(workerCount)
 	}
 
 	s.x, s.nextX = s.nextX, s.x
@@ -86,6 +100,47 @@ func (s *simulation) Step() {
 	s.vy, s.nextVY = s.nextVY, s.vy
 	s.boidsDirty = true
 	s.frames++
+}
+
+func (s *simulation) stepWithGridWorkers(workerCount int) {
+	if workerCount <= 1 || len(s.x) <= 1 {
+		s.applyGridStepRange(0, len(s.x))
+		return
+	}
+	if workerCount > len(s.x) {
+		workerCount = len(s.x)
+	}
+
+	workers := workerCount
+	chunkSize := len(s.x) / workers
+	remainder := len(s.x) % workers
+	start := 0
+
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		end := start + chunkSize
+		if i < remainder {
+			end++
+		}
+		wg.Add(1)
+		go s.applyGridStepRangeWithDone(start, end, &wg)
+		start = end
+	}
+
+	wg.Wait()
+}
+
+func (s *simulation) applyGridStepRange(start, end int) {
+	approximateSeparation := len(s.x) >= parallelSteppingBoidThreshold
+	for i := start; i < end; i++ {
+		sep, avgPos, avgVel, count := s.measureNearbyWithGrid(i, s.cfg, approximateSeparation)
+		s.applyAccelerationAndMove(i, sep, avgPos, avgVel, count, s.cfg)
+	}
+}
+
+func (s *simulation) applyGridStepRangeWithDone(start, end int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.applyGridStepRange(start, end)
 }
 
 func (s *simulation) Boids() []boid {
@@ -297,17 +352,17 @@ func (s *simulation) measureNearby(i int, cfg config) (Point, Point, Point, int)
 			continue
 		}
 
-		distance := math.Sqrt(distanceSquared)
 		count++
 		avgVel = avgVel.Add(Point{x: s.vx[j], y: s.vy[j]})
 		avgPos = avgPos.Add(Point{x: s.x[j], y: s.y[j]})
+		distance := math.Sqrt(distanceSquared)
 		sep = sep.Add(Point{x: offsetX, y: offsetY}.DivideV(distance * 1.5))
 	}
 
 	return sep, avgPos, avgVel, count
 }
 
-func (s *simulation) measureNearbyWithGrid(i int, cfg config) (Point, Point, Point, int) {
+func (s *simulation) measureNearbyWithGrid(i int, cfg config, approximateSeparation bool) (Point, Point, Point, int) {
 	var sep, avgPos, avgVel Point
 	count := 0
 	if cfg.radius <= 0 {
@@ -334,12 +389,25 @@ func (s *simulation) measureNearbyWithGrid(i int, cfg config) (Point, Point, Poi
 			return
 		}
 
-		distance := math.Sqrt(distanceSquared)
 		count++
 		avgVel = avgVel.Add(Point{x: s.vx[j], y: s.vy[j]})
 		avgPos = avgPos.Add(Point{x: s.x[j], y: s.y[j]})
-		sep = sep.Add(Point{x: offsetX, y: offsetY}.DivideV(distance * 1.5))
+		if approximateSeparation {
+			invDistance := approximateInvSqrt(distanceSquared)
+			sep = sep.Add(Point{x: offsetX * invDistance * separationScale, y: offsetY * invDistance * separationScale})
+		} else {
+			distance := math.Sqrt(distanceSquared)
+			sep = sep.Add(Point{x: offsetX, y: offsetY}.DivideV(distance * 1.5))
+		}
 	})
 
 	return sep, avgPos, avgVel, count
+}
+
+func approximateInvSqrt(x float64) float64 {
+	half := 0.5 * x
+	bits := math.Float64bits(x)
+	bits = fastInvSqrt64Magic - (bits >> 1)
+	y := math.Float64frombits(bits)
+	return y * (1.5 - half*y*y)
 }

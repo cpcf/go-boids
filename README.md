@@ -5,7 +5,7 @@ A go implementation of the boids simulation described by Craig Reynolds in 1986.
 https://dl.acm.org/doi/10.1145/37402.37406
 
 ## Output
-Runs in the terminal, using the https://github.com/charmbracelet/bubbletea framework to handle terminal output.
+Runs in the terminal with sparse ANSI updates, so only cells that changed are written on each rendered frame.
 
 Scales the number of boids to the terminal size. Works best on larger terminals. Very large terminal sizes may cause performance issues.
 
@@ -61,7 +61,8 @@ Configurable parameters are set in the `.env` file. Resize window or restart to 
 Defaults and descriptions are as follows:
 
 ```bash
-FPS               = 120   # Frames per second
+FPS               = 120   # Simulation steps per second
+RENDER_FPS        = 60    # Terminal render frames per second; lower to reduce terminal I/O
 BOUNCE            = true  # Bounce off walls
 CLAMP_MIN_SPEED   = true  # Sets the minimum speed
 TARGET_MIN_SPEED  = 0.05  # Minimum speed of boid if clamped

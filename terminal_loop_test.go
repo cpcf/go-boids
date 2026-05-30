@@ -78,3 +78,26 @@ func TestApplyParsedInputMapsToModelHandler(t *testing.T) {
 		t.Fatal("q should request quit")
 	}
 }
+
+func TestEffectiveRenderFPS(t *testing.T) {
+	cfg := defaultConfig()
+	if got, want := effectiveRenderFPS(cfg), 60; got != want {
+		t.Fatalf("effectiveRenderFPS(default) = %d, want %d", got, want)
+	}
+
+	cfg.renderFps = 30
+	if got, want := effectiveRenderFPS(cfg), 30; got != want {
+		t.Fatalf("effectiveRenderFPS(renderFps) = %d, want %d", got, want)
+	}
+
+	cfg.renderFps = 0
+	cfg.fps = 90
+	if got, want := effectiveRenderFPS(cfg), 90; got != want {
+		t.Fatalf("effectiveRenderFPS(fps fallback) = %d, want %d", got, want)
+	}
+
+	cfg.fps = 0
+	if got, want := effectiveRenderFPS(cfg), 60; got != want {
+		t.Fatalf("effectiveRenderFPS(default fallback) = %d, want %d", got, want)
+	}
+}

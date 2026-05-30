@@ -7,13 +7,18 @@ import (
 )
 
 type sparseRenderer struct {
-	widthCells   int
-	heightCells  int
-	prevBoids    map[int]rune
-	nextBoids    map[int]rune
-	output       []byte
-	previousStat string
-	initialized  bool
+	widthCells    int
+	heightCells   int
+	prevGlyphs    []rune
+	nextGlyphs    []rune
+	prevOccupied  []bool
+	nextFrameMark []uint32
+	prevTouched   []int
+	nextTouched   []int
+	frameMark     uint32
+	output        []byte
+	previousStat  string
+	initialized   bool
 }
 
 func (s *sparseRenderer) reset(width, height int) {
@@ -27,14 +32,15 @@ func (s *sparseRenderer) reset(width, height int) {
 	s.widthCells = width
 	s.heightCells = height
 
-	s.prevBoids = clearRuneMap(s.prevBoids)
-	s.nextBoids = clearRuneMap(s.nextBoids)
-	if s.prevBoids == nil {
-		s.prevBoids = make(map[int]rune)
-	}
-	if s.nextBoids == nil {
-		s.nextBoids = make(map[int]rune)
-	}
+	cellCount := width * height
+	s.resizeCellState(cellCount)
+	clear(s.prevGlyphs)
+	clear(s.nextGlyphs)
+	clear(s.prevOccupied)
+	clear(s.nextFrameMark)
+	s.prevTouched = s.prevTouched[:0]
+	s.nextTouched = s.nextTouched[:0]
+	s.frameMark = 0
 
 	s.previousStat = ""
 	s.initialized = false
@@ -51,7 +57,7 @@ func (s *sparseRenderer) render(w io.Writer, boids []boid, status string) error 
 		if x < 0 || y < 0 || x >= width || y >= height {
 			continue
 		}
-		s.nextBoids[cellIndex(width, x, y)] = triangleRune(boids[i].vel)
+		s.setNextCell(cellIndex(width, x, y), triangleRune(boids[i].vel))
 	}
 	return s.flushFrame(w, status)
 }
@@ -71,49 +77,102 @@ func (s *sparseRenderer) renderVectors(w io.Writer, xs, ys, vxs, vys []float64, 
 		if x < 0 || y < 0 || x >= width || y >= height {
 			continue
 		}
-		s.nextBoids[cellIndex(width, x, y)] = triangleRune(Point{x: vxs[i], y: vys[i]})
+		s.setNextCell(cellIndex(width, x, y), triangleRune(Point{x: vxs[i], y: vys[i]}))
 	}
 
 	return s.flushFrame(w, status)
 }
 
 func (s *sparseRenderer) prepareNextFrame(boidCount int) {
-	if s.prevBoids == nil {
-		s.prevBoids = make(map[int]rune, boidCount)
+	cellCount := s.widthCells * s.heightCells
+	if len(s.prevGlyphs) != cellCount {
+		s.resizeCellState(cellCount)
+		clear(s.prevGlyphs)
+		clear(s.nextGlyphs)
+		clear(s.prevOccupied)
+		clear(s.nextFrameMark)
+		s.prevTouched = s.prevTouched[:0]
 	}
-	if s.nextBoids == nil {
-		s.nextBoids = make(map[int]rune, boidCount)
+	if cap(s.nextTouched) < boidCount {
+		s.nextTouched = make([]int, 0, boidCount)
+	} else {
+		s.nextTouched = s.nextTouched[:0]
 	}
+	s.frameMark++
+	if s.frameMark == 0 {
+		clear(s.nextFrameMark)
+		s.frameMark = 1
+	}
+}
 
-	s.nextBoids = clearRuneMap(s.nextBoids)
+func (s *sparseRenderer) resizeCellState(cellCount int) {
+	if cap(s.prevGlyphs) < cellCount {
+		s.prevGlyphs = make([]rune, cellCount)
+	} else {
+		s.prevGlyphs = s.prevGlyphs[:cellCount]
+	}
+	if cap(s.nextGlyphs) < cellCount {
+		s.nextGlyphs = make([]rune, cellCount)
+	} else {
+		s.nextGlyphs = s.nextGlyphs[:cellCount]
+	}
+	if cap(s.prevOccupied) < cellCount {
+		s.prevOccupied = make([]bool, cellCount)
+	} else {
+		s.prevOccupied = s.prevOccupied[:cellCount]
+	}
+	if cap(s.nextFrameMark) < cellCount {
+		s.nextFrameMark = make([]uint32, cellCount)
+	} else {
+		s.nextFrameMark = s.nextFrameMark[:cellCount]
+	}
+}
+
+func (s *sparseRenderer) setNextCell(index int, glyph rune) {
+	if s.nextFrameMark[index] != s.frameMark {
+		s.nextFrameMark[index] = s.frameMark
+		s.nextTouched = append(s.nextTouched, index)
+	}
+	s.nextGlyphs[index] = glyph
 }
 
 func (s *sparseRenderer) flushFrame(w io.Writer, status string) error {
 	width := s.widthCells
 	out := s.output[:0]
-	for i, prev := range s.prevBoids {
-		next, ok := s.nextBoids[i]
-		if ok && prev == next {
+	for _, i := range s.prevTouched {
+		nextOccupied := s.nextFrameMark[i] == s.frameMark
+		next := s.nextGlyphs[i]
+		if nextOccupied && s.prevGlyphs[i] == next {
 			continue
 		}
 		x, y := cellXY(width, i)
 		out = appendCursor(out, x, y)
-		if !ok {
+		if !nextOccupied {
 			next = ' '
 		}
 		out = appendRune(out, next)
 	}
 
-	for i, next := range s.nextBoids {
-		if _, ok := s.prevBoids[i]; ok {
+	for _, i := range s.nextTouched {
+		if s.prevOccupied[i] {
 			continue
 		}
 		x, y := cellXY(width, i)
 		out = appendCursor(out, x, y)
-		out = appendRune(out, next)
+		out = appendRune(out, s.nextGlyphs[i])
 	}
 
-	s.prevBoids, s.nextBoids = s.nextBoids, s.prevBoids
+	for _, i := range s.prevTouched {
+		if s.nextFrameMark[i] != s.frameMark {
+			s.prevOccupied[i] = false
+			s.prevGlyphs[i] = 0
+		}
+	}
+	for _, i := range s.nextTouched {
+		s.prevOccupied[i] = true
+		s.prevGlyphs[i] = s.nextGlyphs[i]
+	}
+	s.prevTouched, s.nextTouched = s.nextTouched, s.prevTouched[:0]
 
 	out = s.appendStatus(out, status)
 	s.initialized = true
@@ -140,13 +199,6 @@ func (s *sparseRenderer) appendStatus(out []byte, status string) []byte {
 	}
 
 	return out
-}
-
-func clearRuneMap(m map[int]rune) map[int]rune {
-	for k := range m {
-		delete(m, k)
-	}
-	return m
 }
 
 func cellIndex(width, x, y int) int {

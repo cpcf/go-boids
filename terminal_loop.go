@@ -120,21 +120,47 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 	ticker := time.NewTicker(frameInterval)
 	defer ticker.Stop()
 
+	renderFPS := effectiveRenderFPS(cfg)
+	var renderTicker *time.Ticker
+	var renderC <-chan time.Time
+	if renderFPS < fps {
+		renderTicker = time.NewTicker(time.Second / time.Duration(renderFPS))
+		defer renderTicker.Stop()
+		renderC = renderTicker.C
+	}
+
+	renderPending := false
+	renderNow := func() error {
+		renderPending = false
+		return renderer.renderSimulation(output, &m.sim, m.statusLine())
+	}
+
 	for {
 		select {
 		case key := <-keyCh:
 			if applyParsedInput(&m, key) {
 				return nil
 			}
-			if err := renderer.renderSimulation(output, &m.sim, m.statusLine()); err != nil {
+			if err := renderNow(); err != nil {
 				return fmt.Errorf("frame render: %w", err)
 			}
 
 		case <-ticker.C:
 			if !m.paused {
 				m.sim.Step()
+				renderPending = true
+				if renderC == nil {
+					if err := renderNow(); err != nil {
+						return fmt.Errorf("frame render: %w", err)
+					}
+				}
 			}
-			if err := renderer.renderSimulation(output, &m.sim, m.statusLine()); err != nil {
+
+		case <-renderC:
+			if !renderPending {
+				continue
+			}
+			if err := renderNow(); err != nil {
 				return fmt.Errorf("frame render: %w", err)
 			}
 
@@ -148,7 +174,7 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 			if _, err := fmt.Fprint(output, ansiClearScreen); err != nil {
 				return err
 			}
-			if err := renderer.renderSimulation(output, &m.sim, m.statusLine()); err != nil {
+			if err := renderNow(); err != nil {
 				return fmt.Errorf("frame render: %w", err)
 			}
 
@@ -159,4 +185,14 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 			return err
 		}
 	}
+}
+
+func effectiveRenderFPS(cfg config) int {
+	if cfg.renderFps > 0 {
+		return cfg.renderFps
+	}
+	if cfg.fps > 0 {
+		return cfg.fps
+	}
+	return defaultConfig().renderFps
 }

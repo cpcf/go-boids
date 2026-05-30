@@ -298,3 +298,33 @@ func TestSimulationStepSwapsStateBuffersAndLazilyMaterializesBoids(t *testing.T)
 		t.Fatal("positions should advance across steps")
 	}
 }
+
+func TestSimulationParallelSteppingMatchesSingleThreadedForLargeFlock(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.radius = 7
+	cfg.maxSpeed = 0.5
+	cfg.adjustRate = 0.025
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 1
+	cfg.separationRate = 1
+	cfg.targetMinSpeed = 0.01
+
+	boids := deterministicBoids(512, 512)
+	if len(boids) <= parallelSteppingBoidThreshold {
+		t.Fatalf("deterministicBoids(512, 512) returned %d boids, expected > %d", len(boids), parallelSteppingBoidThreshold)
+	}
+
+	sequential := newSimulation(cfg)
+	sequential.Resize(512, 512)
+	sequential.setBoids(copyBoidsForTest(boids))
+	sequential.stepWithWorkerCount(1)
+
+	parallel := newSimulation(cfg)
+	parallel.Resize(512, 512)
+	parallel.setBoids(copyBoidsForTest(boids))
+	parallel.stepWithWorkerCount(parallelSteppingWorkerCount)
+
+	if !boidsEqualForTest(sequential.Boids(), parallel.Boids()) {
+		t.Fatal("parallel and single-threaded large-flock stepping differ")
+	}
+}
