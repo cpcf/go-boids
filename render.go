@@ -143,8 +143,12 @@ func (m *model) stepAndDraw(step bool) {
 
 func (m *model) drawBoids() {
 	m.cells.wipe()
-	for _, boid := range m.sim.Boids() {
-		drawTriangle(&m.cells, boid.pos, boid.vel)
+	for i := range m.sim.x {
+		drawTriangle(
+			&m.cells,
+			Point{x: m.sim.x[i], y: m.sim.y[i]},
+			Point{x: m.sim.vx[i], y: m.sim.vy[i]},
+		)
 	}
 }
 

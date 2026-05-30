@@ -57,10 +57,12 @@ manual testing in the terminal.
   - Track touched cells so rebuild clears only buckets used by the previous
     frame.
 
-- [ ] Reshape simulation state toward struct-of-arrays.
+- [x] Reshape simulation state toward struct-of-arrays.
   - Store hot boid position and velocity state in contiguous component slices.
   - Keep behavior-compatible accessors for rendering, stats, and tests while
     avoiding per-frame struct copies.
+  - Made SoA buffers authoritative, kept `Boids` as a lazy compatibility view,
+    and moved stats/sparse rendering to direct SoA reads.
 
 - [ ] Gate parallel stepping for large flocks.
   - Add a fixed worker split only above a measured threshold.

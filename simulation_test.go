@@ -16,7 +16,7 @@ func TestSimulationStepUsesPreviousFrameState(t *testing.T) {
 	cfg.clampMinSpeed = false
 
 	sim := newSimulation(cfg)
-	sim.boids = []boid{
+	sim.setBoids([]boid{
 		{
 			pos:           Point{x: 10, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -33,7 +33,7 @@ func TestSimulationStepUsesPreviousFrameState(t *testing.T) {
 			bounce:        false,
 			clampMinSpeed: false,
 		},
-	}
+	})
 
 	sim.Step()
 	boids := sim.Boids()
@@ -64,7 +64,7 @@ func TestSimulationStepCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T
 
 	sim := newSimulation(cfg)
 	sim.Resize(30, 20)
-	sim.boids = padBoidsForSpatialGridPath([]boid{
+	sim.setBoids(padBoidsForSpatialGridPath([]boid{
 		{
 			pos:           Point{x: 9.9, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -81,7 +81,7 @@ func TestSimulationStepCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T
 			bounce:        false,
 			clampMinSpeed: false,
 		},
-	})
+	}))
 
 	sim.Step()
 	boids := sim.Boids()
@@ -105,7 +105,7 @@ func TestSimulationStepDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
 	cfg.clampMinSpeed = false
 
 	sim := newSimulation(cfg)
-	sim.boids = []boid{
+	sim.setBoids([]boid{
 		{
 			pos:           Point{x: 1, y: 10},
 			vel:           Point{x: 1, y: 0},
@@ -122,7 +122,7 @@ func TestSimulationStepDoesNotWrapNeighborSearchAtScreenEdges(t *testing.T) {
 			bounce:        false,
 			clampMinSpeed: false,
 		},
-	}
+	})
 
 	sim.Step()
 	boids := sim.Boids()
@@ -222,7 +222,7 @@ func TestSimulationSetConfigFallsBackInvalidGridCellSize(t *testing.T) {
 	}
 }
 
-func TestSimulationStepSwapsBoidBuffers(t *testing.T) {
+func TestSimulationStepSwapsStateBuffersAndLazilyMaterializesBoids(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.radius = 0
 	cfg.maxSpeed = 10
@@ -233,7 +233,7 @@ func TestSimulationStepSwapsBoidBuffers(t *testing.T) {
 	cfg.clampMinSpeed = false
 
 	sim := newSimulation(cfg)
-	sim.boids = []boid{
+	sim.setBoids([]boid{
 		{
 			pos:           Point{x: 1, y: 1},
 			vel:           Point{x: 1, y: 0},
@@ -250,33 +250,51 @@ func TestSimulationStepSwapsBoidBuffers(t *testing.T) {
 			bounce:        false,
 			clampMinSpeed: false,
 		},
-	}
+	})
 
-	initialCurrentBoid0 := &sim.boids[0]
-	initialCurrentBoid1 := &sim.boids[1]
+	initialX0 := &sim.x[0]
+	initialNextX0 := &sim.nextX[0]
+	initialY0 := &sim.y[0]
+	initialNextY0 := &sim.nextY[0]
+	initialVX0 := &sim.vx[0]
+	initialNextVX0 := &sim.nextVX[0]
+	initialVY0 := &sim.vy[0]
+	initialNextVY0 := &sim.nextVY[0]
+	initialBoid := sim.boids[0]
 
 	sim.Step()
+	if &sim.x[0] != initialNextX0 || &sim.y[0] != initialNextY0 || &sim.vx[0] != initialNextVX0 || &sim.vy[0] != initialNextVY0 {
+		t.Fatal("after first step, current SoA buffers should swap to the next backing arrays")
+	}
+	if &sim.nextX[0] != initialX0 || &sim.nextY[0] != initialY0 || &sim.nextVX[0] != initialVX0 || &sim.nextVY[0] != initialVY0 {
+		t.Fatal("after first step, next SoA buffers should reuse the previous current backing arrays")
+	}
+	if !sim.boidsDirty {
+		t.Fatal("Step should mark the compatibility boid view dirty")
+	}
+	if sim.boids[0] != initialBoid {
+		t.Fatal("Step should not eagerly rewrite the compatibility boid view")
+	}
+
 	afterFirst := sim.Boids()
-	if len(sim.nextBoids) != len(sim.boids) {
-		t.Fatalf("len(sim.nextBoids) = %d, want %d", len(sim.nextBoids), len(sim.boids))
+	if sim.boidsDirty {
+		t.Fatal("Boids should materialize and clear the dirty flag")
 	}
-	if &sim.nextBoids[0] != initialCurrentBoid0 || &sim.nextBoids[1] != initialCurrentBoid1 {
-		t.Fatal("after first step, next buffer should reuse previous frame backing array")
+	if got, want := afterFirst[0].pos, (Point{x: 2, y: 1}); got != want {
+		t.Fatalf("materialized boid 0 pos = %+v, want %+v", got, want)
 	}
+	if got, want := afterFirst[0].vel, (Point{x: 1, y: 0}); got != want {
+		t.Fatalf("materialized boid 0 vel = %+v, want %+v", got, want)
+	}
+	afterFirstBoid := afterFirst[0]
 
-	firstCurrent := &afterFirst[0]
-	firstCurrent1 := &afterFirst[1]
 	sim.Step()
+	if &sim.x[0] != initialX0 || &sim.y[0] != initialY0 || &sim.vx[0] != initialVX0 || &sim.vy[0] != initialVY0 {
+		t.Fatal("after second step, current SoA buffers should swap back to the initial backing arrays")
+	}
+
 	afterSecond := sim.Boids()
-
-	if &afterSecond[0] != initialCurrentBoid0 || &afterSecond[1] != initialCurrentBoid1 {
-		t.Fatal("after second step, current frame should have swapped back to the initial backing array")
-	}
-	if &sim.nextBoids[0] != firstCurrent || &sim.nextBoids[1] != firstCurrent1 {
-		t.Fatal("after second step, next buffer should be the buffer written by the previous step")
-	}
-
-	if afterSecond[0] == afterFirst[0] {
+	if afterSecond[0] == afterFirstBoid {
 		t.Fatal("positions should advance across steps")
 	}
 }

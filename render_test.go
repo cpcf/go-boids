@@ -106,14 +106,14 @@ func TestModelSingleStepOnlyWhenPaused(t *testing.T) {
 	m.cells.init(20, 10)
 	m.sim = simulation{cfg: cfg}
 	m.sim.Resize(20, 10)
-	m.sim.boids = []boid{{
+	m.sim.setBoids([]boid{{
 		pos:           Point{x: 1, y: 1},
 		vel:           Point{x: 1, y: 0},
 		maxX:          20,
 		maxY:          10,
 		bounce:        false,
 		clampMinSpeed: false,
-	}}
+	}})
 
 	beforePaused := copyBoidsForTest(m.sim.Boids())
 	m = modelWithUpdate(t, m, tea.KeyMsg{

@@ -36,7 +36,7 @@ func BenchmarkUpdateBoids(b *testing.B) {
 		b.Run(size.name, func(b *testing.B) {
 			sim := newSimulation(cfg)
 			sim.Resize(size.width, size.height)
-			sim.boids = deterministicBoids(size.width, size.height)
+			sim.setBoids(deterministicBoids(size.width, size.height))
 
 			b.ReportAllocs()
 			b.ResetTimer()
@@ -45,9 +45,8 @@ func BenchmarkUpdateBoids(b *testing.B) {
 			}
 			b.StopTimer()
 
-			boids := sim.Boids()
-			if len(boids) > 0 {
-				benchBoidSink = boids[0]
+			if len(sim.x) > 0 {
+				benchPointSink = Point{x: sim.x[0], y: sim.y[0]}
 			}
 		})
 	}
@@ -67,7 +66,7 @@ func BenchmarkSimulationStats(b *testing.B) {
 		b.Run(size.name, func(b *testing.B) {
 			sim := newSimulation(cfg)
 			sim.Resize(size.width, size.height)
-			sim.boids = deterministicBoids(size.width, size.height)
+			sim.setBoids(deterministicBoids(size.width, size.height))
 
 			b.ReportAllocs()
 			b.ResetTimer()
@@ -197,10 +196,10 @@ func BenchmarkSparseANSIFrame(b *testing.B) {
 
 			sim := newSimulation(cfg)
 			sim.Resize(size.width, size.height)
-			sim.boids = deterministicBoids(size.width, size.height)
+			sim.setBoids(deterministicBoids(size.width, size.height))
 			for i := 0; i < 4; i++ {
 				sim.Step()
-				if err := r.render(io.Discard, sim.Boids(), statuses[i%len(statuses)]); err != nil {
+				if err := r.renderSimulation(io.Discard, &sim, statuses[i%len(statuses)]); err != nil {
 					b.Fatalf("warm render() = %v", err)
 				}
 			}
@@ -213,7 +212,7 @@ func BenchmarkSparseANSIFrame(b *testing.B) {
 				if i%2 == 1 {
 					status = "paused"
 				}
-				if err := r.render(io.Discard, sim.Boids(), status); err != nil {
+				if err := r.renderSimulation(io.Discard, &sim, status); err != nil {
 					b.Fatalf("render() = %v", err)
 				}
 			}
@@ -238,7 +237,7 @@ func BenchmarkModelFrame(b *testing.B) {
 			m.cfg = cfg
 			m.sim = newSimulation(cfg)
 			m.sim.Resize(size.width, size.height)
-			m.sim.boids = deterministicBoids(size.width, size.height)
+			m.sim.setBoids(deterministicBoids(size.width, size.height))
 			m.cells.init(size.width, size.height)
 			m.drawBoids()
 
@@ -250,7 +249,7 @@ func BenchmarkModelFrame(b *testing.B) {
 				benchStringSink = m.View()
 			}
 
-			benchBoidSink = m.sim.boids[0]
+			benchPointSink = Point{x: m.sim.x[0], y: m.sim.y[0]}
 		})
 	}
 }

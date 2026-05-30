@@ -89,7 +89,7 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 	renderer := sparseRenderer{}
 	renderer.reset(m.cells.width(), m.cells.height())
 
-	if err := renderer.render(output, m.sim.Boids(), m.statusLine()); err != nil {
+	if err := renderer.renderSimulation(output, &m.sim, m.statusLine()); err != nil {
 		return fmt.Errorf("initial render: %w", err)
 	}
 
@@ -126,7 +126,7 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 			if applyParsedInput(&m, key) {
 				return nil
 			}
-			if err := renderer.render(output, m.sim.Boids(), m.statusLine()); err != nil {
+			if err := renderer.renderSimulation(output, &m.sim, m.statusLine()); err != nil {
 				return fmt.Errorf("frame render: %w", err)
 			}
 
@@ -134,7 +134,7 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 			if !m.paused {
 				m.sim.Step()
 			}
-			if err := renderer.render(output, m.sim.Boids(), m.statusLine()); err != nil {
+			if err := renderer.renderSimulation(output, &m.sim, m.statusLine()); err != nil {
 				return fmt.Errorf("frame render: %w", err)
 			}
 
@@ -148,7 +148,7 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 			if _, err := fmt.Fprint(output, ansiClearScreen); err != nil {
 				return err
 			}
-			if err := renderer.render(output, m.sim.Boids(), m.statusLine()); err != nil {
+			if err := renderer.renderSimulation(output, &m.sim, m.statusLine()); err != nil {
 				return fmt.Errorf("frame render: %w", err)
 			}
 

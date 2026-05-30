@@ -75,6 +75,36 @@ func (g *spatialGrid) rebuild(boids []boid) {
 	}
 }
 
+func (g *spatialGrid) rebuildFromPositions(xs, ys []float64) {
+	g.setCellSize(g.cellSize)
+
+	if len(g.cells) == 0 {
+		g.touched = g.touched[:0]
+		return
+	}
+
+	g.clearTouchedCells()
+	if len(xs) == 0 {
+		return
+	}
+
+	if cap(g.next) < len(xs) {
+		g.next = make([]int, len(xs))
+	}
+	g.next = g.next[:len(xs)]
+
+	for i := range xs {
+		pos := Point{x: xs[i], y: ys[i]}
+		cell := g.cellFor(pos)
+		cellIndex := cell.y*g.cellCols + cell.x
+		if g.cells[cellIndex] == noCellLink {
+			g.touched = append(g.touched, cellIndex)
+		}
+		g.next[i] = g.cells[cellIndex]
+		g.cells[cellIndex] = i
+	}
+}
+
 func (g *spatialGrid) candidateIndexes(pos Point, dst []int) []int {
 	dst = dst[:0]
 	if len(g.cells) == 0 {

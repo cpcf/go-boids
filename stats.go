@@ -19,7 +19,7 @@ func (s *simulation) Stats() simulationStats {
 		frames:    s.frames,
 		width:     s.width,
 		height:    s.height,
-		boids:     len(s.boids),
+		boids:     len(s.x),
 		avgSpeed:  0,
 		minSpeed:  0,
 		maxSpeed:  0,
@@ -27,7 +27,7 @@ func (s *simulation) Stats() simulationStats {
 		centroidY: 0,
 	}
 
-	if len(s.boids) == 0 {
+	if len(s.x) == 0 {
 		return stats
 	}
 
@@ -37,11 +37,11 @@ func (s *simulation) Stats() simulationStats {
 	minSpeed := math.Inf(1)
 	maxSpeed := 0.0
 
-	for _, boid := range s.boids {
-		speed := math.Hypot(boid.vel.x, boid.vel.y)
+	for i := range s.x {
+		speed := math.Hypot(s.vx[i], s.vy[i])
 		totalSpeed += speed
-		totalX += boid.pos.x
-		totalY += boid.pos.y
+		totalX += s.x[i]
+		totalY += s.y[i]
 		if speed < minSpeed {
 			minSpeed = speed
 		}
@@ -50,11 +50,11 @@ func (s *simulation) Stats() simulationStats {
 		}
 	}
 
-	stats.avgSpeed = totalSpeed / float64(len(s.boids))
+	stats.avgSpeed = totalSpeed / float64(len(s.x))
 	stats.minSpeed = minSpeed
 	stats.maxSpeed = maxSpeed
-	stats.centroidX = totalX / float64(len(s.boids))
-	stats.centroidY = totalY / float64(len(s.boids))
+	stats.centroidX = totalX / float64(len(s.x))
+	stats.centroidY = totalY / float64(len(s.x))
 
 	return stats
 }

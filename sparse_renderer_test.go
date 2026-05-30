@@ -125,3 +125,33 @@ func TestSparseRendererLastBoidWinsCollision(t *testing.T) {
 		t.Fatalf("later boid should win collision, got %q", got)
 	}
 }
+
+func TestSparseRendererRenderSimulationDoesNotMaterializeBoidView(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.radius = 0
+	sim := newSimulation(cfg)
+	sim.setBoids([]boid{{
+		pos:           Point{x: 0, y: 0},
+		vel:           Point{x: 1, y: 0},
+		maxX:          2,
+		maxY:          1,
+		bounce:        false,
+		clampMinSpeed: false,
+	}})
+	sim.Step()
+
+	if !sim.boidsDirty {
+		t.Fatal("test setup should leave the compatibility boid view dirty")
+	}
+
+	var r sparseRenderer
+	r.reset(2, 1)
+	var buf bytes.Buffer
+	if err := r.renderSimulation(&buf, &sim, "status"); err != nil {
+		t.Fatalf("renderSimulation() = %v", err)
+	}
+
+	if !sim.boidsDirty {
+		t.Fatal("renderSimulation should read SoA state without materializing the compatibility boid view")
+	}
+}

@@ -136,3 +136,20 @@ func TestSimulationStatsReadOnly(t *testing.T) {
 		t.Fatalf("sim.cfg = %#v, want %#v", sim.cfg, beforeCfg)
 	}
 }
+
+func TestSimulationStatsDoesNotMaterializeBoidView(t *testing.T) {
+	cfg := defaultConfig()
+	sim := newSimulation(cfg)
+	sim.Resize(40, 24)
+	sim.Step()
+
+	if !sim.boidsDirty {
+		t.Fatal("test setup should leave the compatibility boid view dirty")
+	}
+
+	_ = sim.Stats()
+
+	if !sim.boidsDirty {
+		t.Fatal("Stats should read SoA state without materializing the compatibility boid view")
+	}
+}

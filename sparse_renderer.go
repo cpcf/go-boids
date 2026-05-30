@@ -43,23 +43,53 @@ func (s *sparseRenderer) reset(width, height int) {
 func (s *sparseRenderer) render(w io.Writer, boids []boid, status string) error {
 	width := s.widthCells
 	height := s.heightCells
-	if s.prevBoids == nil {
-		s.prevBoids = make(map[int]rune, len(boids))
-	}
-	if s.nextBoids == nil {
-		s.nextBoids = make(map[int]rune, len(boids))
-	}
+	s.prepareNextFrame(len(boids))
 
-	s.nextBoids = clearRuneMap(s.nextBoids)
-	for _, boid := range boids {
-		x := int(boid.pos.x)
-		y := int(boid.pos.y)
+	for i := range boids {
+		x := int(boids[i].pos.x)
+		y := int(boids[i].pos.y)
 		if x < 0 || y < 0 || x >= width || y >= height {
 			continue
 		}
-		s.nextBoids[cellIndex(width, x, y)] = triangleRune(boid.vel)
+		s.nextBoids[cellIndex(width, x, y)] = triangleRune(boids[i].vel)
+	}
+	return s.flushFrame(w, status)
+}
+
+func (s *sparseRenderer) renderSimulation(w io.Writer, sim *simulation, status string) error {
+	return s.renderVectors(w, sim.x, sim.y, sim.vx, sim.vy, status)
+}
+
+func (s *sparseRenderer) renderVectors(w io.Writer, xs, ys, vxs, vys []float64, status string) error {
+	width := s.widthCells
+	height := s.heightCells
+	s.prepareNextFrame(len(xs))
+
+	for i := range xs {
+		x := int(xs[i])
+		y := int(ys[i])
+		if x < 0 || y < 0 || x >= width || y >= height {
+			continue
+		}
+		s.nextBoids[cellIndex(width, x, y)] = triangleRune(Point{x: vxs[i], y: vys[i]})
 	}
 
+	return s.flushFrame(w, status)
+}
+
+func (s *sparseRenderer) prepareNextFrame(boidCount int) {
+	if s.prevBoids == nil {
+		s.prevBoids = make(map[int]rune, boidCount)
+	}
+	if s.nextBoids == nil {
+		s.nextBoids = make(map[int]rune, boidCount)
+	}
+
+	s.nextBoids = clearRuneMap(s.nextBoids)
+}
+
+func (s *sparseRenderer) flushFrame(w io.Writer, status string) error {
+	width := s.widthCells
 	out := s.output[:0]
 	for i, prev := range s.prevBoids {
 		next, ok := s.nextBoids[i]
