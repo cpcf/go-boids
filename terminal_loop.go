@@ -131,7 +131,9 @@ func runInteractiveWithIO(cfg config, input *os.File, output io.Writer) error {
 			}
 
 		case <-ticker.C:
-			m.handleFrame()
+			if !m.paused {
+				m.sim.Step()
+			}
 			if err := renderer.render(output, m.sim.Boids(), m.statusLine()); err != nil {
 				return fmt.Errorf("frame render: %w", err)
 			}
