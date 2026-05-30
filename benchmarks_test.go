@@ -175,6 +175,39 @@ func BenchmarkCellbufferSparseDrawCycle(b *testing.B) {
 	}
 }
 
+func BenchmarkModelFrame(b *testing.B) {
+	cfg := defaultConfig()
+	cfg.radius = 7
+	cfg.maxSpeed = 0.5
+	cfg.adjustRate = 0.025
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 1
+	cfg.separationRate = 1
+	cfg.targetMinSpeed = 0.01
+
+	for _, size := range benchmarkSizes {
+		b.Run(size.name, func(b *testing.B) {
+			var m model
+			m.cfg = cfg
+			m.sim = newSimulation(cfg)
+			m.sim.Resize(size.width, size.height)
+			m.sim.boids = deterministicBoids(size.width, size.height)
+			m.cells.init(size.width, size.height)
+			m.drawBoids()
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				next, _ := m.Update(frameMsg{})
+				m = next.(model)
+				benchStringSink = m.View()
+			}
+
+			benchBoidSink = m.sim.boids[0]
+		})
+	}
+}
+
 func deterministicBoids(width, height int) []boid {
 	count := width*height/125 + 1
 	boids := make([]boid, count)

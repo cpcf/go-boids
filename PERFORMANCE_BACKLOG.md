@@ -23,3 +23,47 @@ manual testing in the terminal.
     after the simulation changes.
   - Kept Bubble Tea, added sparse dirty-cell clearing, and optimized full-view
     string construction.
+
+## Drastic Redesign
+
+- [x] Add benchmark coverage for full frame costs.
+  - Measure simulation step, sparse draw cycle, full view string construction,
+    and combined model frame cost in one place.
+  - Use these benchmarks to validate each larger redesign step.
+  - Added `BenchmarkModelFrame` for step, draw, frame command, and `View`.
+
+- [ ] Introduce a sparse ANSI renderer.
+  - Render only changed boid cells and status-line updates instead of rebuilding
+    a full screen string every frame.
+  - Preserve visible controls and status behavior.
+  - Keep the implementation testable without requiring a real terminal.
+
+- [ ] Move interactive mode off the Bubble Tea full-view render path.
+  - Use the sparse renderer for terminal output.
+  - Preserve quit, pause, single-step, stats/help, reset, radius/max-speed
+    runtime controls, and resize behavior where practical.
+
+- [ ] Reshape simulation state toward struct-of-arrays.
+  - Store hot boid position and velocity state in contiguous component slices.
+  - Keep behavior-compatible accessors for rendering, stats, and tests while
+    avoiding per-frame struct copies.
+
+- [ ] Double-buffer simulation state.
+  - Read from current arrays and write next positions/velocities, then swap.
+  - Remove the full previous-frame boid snapshot from the hot path.
+
+- [ ] Make the spatial grid fixed to simulation bounds.
+  - Use screen/world dimensions to size grid arrays directly.
+  - Avoid recomputing observed grid bounds every frame.
+
+- [ ] Gate parallel stepping for large flocks.
+  - Add a fixed worker split only above a measured threshold.
+  - Keep deterministic frame semantics and avoid overhead for small flocks.
+
+- [ ] Consider approximate separation math.
+  - Replace per-neighbor `sqrt` only if the changed flock behavior is acceptable
+    and benchmarks show a meaningful gain.
+
+- [ ] Decouple simulation and render cadence.
+  - Allow rendering to run at a lower or adaptive cadence than simulation when
+    terminal output is the bottleneck.
