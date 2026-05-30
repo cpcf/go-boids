@@ -66,6 +66,11 @@ func (b *boid) updateWithCandidateIndexes(boids []boid, candidateIndexes []int, 
 	b.applyAcceleration(accel, cfg)
 }
 
+func (b *boid) updateWithCandidateGrid(boids []boid, grid *spatialGrid, cfg config) {
+	accel := b.calcAccelerationWithCandidateGrid(boids, grid, cfg)
+	b.applyAcceleration(accel, cfg)
+}
+
 func (b *boid) applyAcceleration(accel Point, cfg config) {
 	b.vel = b.vel.Add(accel).Limit(-cfg.maxSpeed, cfg.maxSpeed)
 
@@ -118,6 +123,11 @@ func (b *boid) calcAcceleration(boids []boid, cfg config) Point {
 
 func (b *boid) calcAccelerationWithCandidateIndexes(boids []boid, candidateIndexes []int, cfg config) Point {
 	sep, avgPos, avgVel, count := b.measureNearbyCandidateIndexes(boids, candidateIndexes, cfg)
+	return b.calcAccelerationFromNearby(sep, avgPos, avgVel, count, cfg)
+}
+
+func (b *boid) calcAccelerationWithCandidateGrid(boids []boid, grid *spatialGrid, cfg config) Point {
+	sep, avgPos, avgVel, count := b.measureNearbyCandidateGrid(boids, grid, cfg)
 	return b.calcAccelerationFromNearby(sep, avgPos, avgVel, count, cfg)
 }
 
@@ -196,6 +206,36 @@ func (b *boid) measureNearbyCandidateIndexes(boids []boid, candidateIndexes []in
 		avgPos = avgPos.Add(otherPos)
 		sep = sep.Add(offset.DivideV(distance * 1.5))
 	}
+	return sep, avgPos, avgVel, count
+}
+
+func (b *boid) measureNearbyCandidateGrid(boids []boid, grid *spatialGrid, cfg config) (Point, Point, Point, int) {
+	var sep, avgPos, avgVel Point
+	count := 0
+	if cfg.radius <= 0 {
+		return sep, avgPos, avgVel, count
+	}
+	radiusSquared := cfg.radius * cfg.radius
+	pos := b.pos
+
+	grid.visitNearbyBoidIndexes(pos, func(candidateIndex int) {
+		otherPos := boids[candidateIndex].pos
+		offset := pos.Subtract(otherPos)
+		if offset.x == 0 && offset.y == 0 {
+			return
+		}
+		distanceSquared := offset.magnitudeSquared()
+		if !(distanceSquared < radiusSquared) {
+			return
+		}
+
+		distance := math.Sqrt(distanceSquared)
+		count++
+		avgVel = avgVel.Add(boids[candidateIndex].vel)
+		avgPos = avgPos.Add(otherPos)
+		sep = sep.Add(offset.DivideV(distance * 1.5))
+	})
+
 	return sep, avgPos, avgVel, count
 }
 

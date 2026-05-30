@@ -8,9 +8,8 @@ type simulation struct {
 	boids         []boid
 	frames        int
 
-	previousBoids    []boid
-	nearbyGrid       spatialGrid
-	candidateIndexes []int
+	previousBoids []boid
+	nearbyGrid    spatialGrid
 }
 
 func newSimulation(cfg config) simulation {
@@ -42,13 +41,9 @@ func (s *simulation) Step() {
 	} else {
 		s.nearbyGrid.cellSize = s.cfg.radius
 		s.nearbyGrid.rebuild(s.previousBoids)
-		if cap(s.candidateIndexes) < len(s.previousBoids) {
-			s.candidateIndexes = make([]int, 0, len(s.previousBoids))
-		}
 
 		for i := range s.boids {
-			s.candidateIndexes = s.nearbyGrid.candidateIndexes(s.previousBoids[i].pos, s.candidateIndexes)
-			s.boids[i].updateWithCandidateIndexes(s.previousBoids, s.candidateIndexes, s.cfg)
+			s.boids[i].updateWithCandidateGrid(s.previousBoids, &s.nearbyGrid, s.cfg)
 		}
 	}
 

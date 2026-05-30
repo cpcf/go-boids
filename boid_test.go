@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"slices"
 	"testing"
 )
@@ -235,24 +236,7 @@ func TestMeasureNearby(t *testing.T) {
 func TestMeasureNearbyCandidateIndexesMatchesFullScan(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.radius = 5
-
-	boids := []boid{
-		{pos: Point{x: 9.9, y: 9.9}, vel: Point{x: 1, y: 0}},      // near upper cell boundaries
-		{pos: Point{x: 14.8, y: 9.9}, vel: Point{x: 2, y: 1}},     // inside radius, adjacent x cell
-		{pos: Point{x: 9.9, y: 10.2}, vel: Point{x: 0, y: 3}},     // inside radius, adjacent y cell
-		{pos: Point{x: 13.3, y: 13.3}, vel: Point{x: -1, y: 2}},   // inside radius, diagonal cell
-		{pos: Point{x: 14.95, y: 9.9}, vel: Point{x: 9, y: 9}},    // candidate, outside radius
-		{pos: Point{x: 9.9, y: 9.9}, vel: Point{x: 4, y: 4}},      // same position excluded
-		{pos: Point{x: 30, y: 30}, vel: Point{x: 7, y: 7}},        // outside candidate cells
-		{pos: Point{x: 10, y: 10}, vel: Point{x: -2, y: -2}},      // exactly on x/y cell boundaries
-		{pos: Point{x: 5.05, y: 10}, vel: Point{x: 1, y: -1}},     // inside radius across lower x boundary
-		{pos: Point{x: 10, y: 14.95}, vel: Point{x: 2, y: -3}},    // inside radius across upper y boundary
-		{pos: Point{x: -0.1, y: -0.1}, vel: Point{x: -3, y: 1}},   // negative cell
-		{pos: Point{x: 4.8, y: -0.1}, vel: Point{x: 3, y: -1}},    // inside radius across zero x boundary
-		{pos: Point{x: -0.1, y: -5.05}, vel: Point{x: -1, y: -2}}, // inside radius across negative y boundary
-		{pos: Point{x: -5.2, y: -0.1}, vel: Point{x: -2, y: 0.5}}, // candidate, outside radius
-		{pos: Point{x: -20, y: -20}, vel: Point{x: -7, y: -7}},    // outside candidate cells
-	}
+	boids := candidateGridTestBoids()
 	grid := newSpatialGrid(cfg.radius)
 	grid.rebuild(boids)
 
@@ -296,6 +280,91 @@ func TestMeasureNearbyCandidateIndexesMatchesFullScan(t *testing.T) {
 			assertCandidatesIncludeNearby(t, subject, boids, candidates, cfg)
 			assertNearbyMeasurementsMatch(t, subject, boids, candidates, cfg)
 		})
+	}
+}
+
+func TestMeasureNearbyCandidateGridMatchesFullScan(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.radius = 5
+
+	boids := candidateGridTestBoids()
+	grid := newSpatialGrid(cfg.radius)
+	grid.rebuild(boids)
+
+	for _, subjectIndex := range []int{0, 7, 10} {
+		subject := boids[subjectIndex]
+		wantSep, wantAvgPos, wantAvgVel, wantCount := subject.measureNearby(boids, cfg)
+		gotSep, gotAvgPos, gotAvgVel, gotCount := subject.measureNearbyCandidateGrid(boids, &grid, cfg)
+
+		if gotCount != wantCount {
+			t.Fatalf("boid %d count = %d, want %d", subjectIndex, gotCount, wantCount)
+		}
+		if !pointNear(gotSep, wantSep) {
+			t.Fatalf("boid %d sep = %+v, want %+v", subjectIndex, gotSep, wantSep)
+		}
+		if !pointNear(gotAvgPos, wantAvgPos) {
+			t.Fatalf("boid %d avgPos = %+v, want %+v", subjectIndex, gotAvgPos, wantAvgPos)
+		}
+		if !pointNear(gotAvgVel, wantAvgVel) {
+			t.Fatalf("boid %d avgVel = %+v, want %+v", subjectIndex, gotAvgVel, wantAvgVel)
+		}
+	}
+}
+
+func TestMeasureNearbyCandidateGridWithInvalidRadius(t *testing.T) {
+	boids := candidateGridTestBoids()
+
+	tests := []struct {
+		name   string
+		radius float64
+		want   int
+	}{
+		{name: "zero", radius: 0, want: 0},
+		{name: "negative", radius: -3, want: 0},
+		{name: "nan", radius: math.NaN(), want: 0},
+		{name: "infinity", radius: math.Inf(1), want: -1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultConfig()
+			cfg.radius = tt.radius
+			grid := newSpatialGrid(tt.radius)
+			grid.rebuild(boids)
+
+			for _, subject := range boids {
+				want := tt.want
+				if want < 0 {
+					candidateIndexes := grid.candidateIndexes(subject.pos, nil)
+					_, _, _, want = subject.measureNearbyCandidateIndexes(boids, candidateIndexes, cfg)
+				}
+
+				_, _, _, count := subject.measureNearbyCandidateGrid(boids, &grid, cfg)
+				if got := count; got != want {
+					t.Fatalf("radius=%v count = %d, want %d", tt.radius, got, want)
+				}
+			}
+		})
+	}
+}
+
+func candidateGridTestBoids() []boid {
+	return []boid{
+		{pos: Point{x: 9.9, y: 9.9}, vel: Point{x: 1, y: 0}},      // near upper cell boundaries
+		{pos: Point{x: 14.8, y: 9.9}, vel: Point{x: 2, y: 1}},     // inside radius, adjacent x cell
+		{pos: Point{x: 9.9, y: 10.2}, vel: Point{x: 0, y: 3}},     // inside radius, adjacent y cell
+		{pos: Point{x: 13.3, y: 13.3}, vel: Point{x: -1, y: 2}},   // inside radius, diagonal cell
+		{pos: Point{x: 14.95, y: 9.9}, vel: Point{x: 9, y: 9}},    // candidate, outside radius
+		{pos: Point{x: 9.9, y: 9.9}, vel: Point{x: 4, y: 4}},      // same position excluded
+		{pos: Point{x: 30, y: 30}, vel: Point{x: 7, y: 7}},        // outside candidate cells
+		{pos: Point{x: 10, y: 10}, vel: Point{x: -2, y: -2}},      // exactly on x/y cell boundaries
+		{pos: Point{x: 5.05, y: 10}, vel: Point{x: 1, y: -1}},     // inside radius across lower x boundary
+		{pos: Point{x: 10, y: 14.95}, vel: Point{x: 2, y: -3}},    // inside radius across upper y boundary
+		{pos: Point{x: -0.1, y: -0.1}, vel: Point{x: -3, y: 1}},   // negative cell
+		{pos: Point{x: 4.8, y: -0.1}, vel: Point{x: 3, y: -1}},    // inside radius across zero x boundary
+		{pos: Point{x: -0.1, y: -5.05}, vel: Point{x: -1, y: -2}}, // inside radius across negative y boundary
+		{pos: Point{x: -5.2, y: -0.1}, vel: Point{x: -2, y: 0.5}}, // candidate, outside radius
+		{pos: Point{x: -20, y: -20}, vel: Point{x: -7, y: -7}},    // outside candidate cells
 	}
 }
 
