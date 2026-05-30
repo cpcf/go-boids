@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
@@ -35,13 +33,7 @@ func main() {
 		return
 	}
 
-	m := model{
-		cfg: cfg,
-		sim: newSimulation(cfg),
-	}
-
-	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
-	if _, err := p.Run(); err != nil {
+	if err := runInteractive(cfg); err != nil {
 		fmt.Println("Uh oh:", err)
 		os.Exit(1)
 	}

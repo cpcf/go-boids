@@ -39,10 +39,12 @@ manual testing in the terminal.
   - Keep the implementation testable without requiring a real terminal.
   - Added an allocation-free sparse renderer and `BenchmarkSparseANSIFrame`.
 
-- [ ] Move interactive mode off the Bubble Tea full-view render path.
+- [x] Move interactive mode off the Bubble Tea full-view render path.
   - Use the sparse renderer for terminal output.
   - Preserve quit, pause, single-step, stats/help, reset, radius/max-speed
     runtime controls, and resize behavior where practical.
+  - Added a custom raw terminal loop with sparse ANSI rendering and SIGWINCH
+    resize handling.
 
 - [ ] Reshape simulation state toward struct-of-arrays.
   - Store hot boid position and velocity state in contiguous component slices.
