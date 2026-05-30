@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestSimulationStepUsesPreviousFrameState(t *testing.T) {
 	cfg := defaultConfig()
@@ -60,6 +63,7 @@ func TestSimulationStepCountsNeighborsAcrossSpatialGridCellBoundary(t *testing.T
 	cfg.clampMinSpeed = false
 
 	sim := newSimulation(cfg)
+	sim.Resize(30, 20)
 	sim.boids = padBoidsForSpatialGridPath([]boid{
 		{
 			pos:           Point{x: 9.9, y: 10},
@@ -196,6 +200,25 @@ func TestSimulationSetConfigUpdatesConfigAndGridCellSizeWithoutReset(t *testing.
 	}
 	if !boidsEqualForTest(before, sim.Boids()) {
 		t.Fatal("SetConfig should not reset boids")
+	}
+}
+
+func TestSimulationSetConfigFallsBackInvalidGridCellSize(t *testing.T) {
+	invalidRadii := []float64{0, -1, math.NaN(), math.Inf(1), math.Inf(-1)}
+
+	for _, radius := range invalidRadii {
+		cfg := defaultConfig()
+		cfg.seed = uint64Ptr(123)
+		sim := newSimulation(cfg)
+		sim.Resize(20, 10)
+
+		updatedCfg := cfg
+		updatedCfg.radius = radius
+		sim.SetConfig(updatedCfg)
+
+		if got, want := sim.nearbyGrid.cellSize, float64(defaultSpatialGridCellSize); got != want {
+			t.Fatalf("radius=%v nearby grid cell size = %.6f, want %.6f", radius, got, want)
+		}
 	}
 }
 

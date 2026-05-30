@@ -51,9 +51,11 @@ manual testing in the terminal.
   - Remove the full previous-frame boid snapshot from the hot path.
   - Added a reusable next-frame boid buffer and swapped buffers after each step.
 
-- [ ] Make the spatial grid fixed to simulation bounds.
+- [x] Make the spatial grid fixed to simulation bounds.
   - Use screen/world dimensions to size grid arrays directly.
   - Avoid recomputing observed grid bounds every frame.
+  - Track touched cells so rebuild clears only buckets used by the previous
+    frame.
 
 - [ ] Reshape simulation state toward struct-of-arrays.
   - Store hot boid position and velocity state in contiguous component slices.

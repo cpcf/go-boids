@@ -234,7 +234,7 @@ func TestMeasureNearbyCandidateIndexesMatchesFullScan(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.radius = 5
 	boids := candidateGridTestBoids()
-	grid := newSpatialGrid(cfg.radius)
+	grid := newSpatialGrid(cfg.radius, 80, 80)
 	grid.rebuild(boids)
 
 	tests := []struct {
@@ -256,7 +256,7 @@ func TestMeasureNearbyCandidateIndexesMatchesFullScan(t *testing.T) {
 			wantDistant:   6,
 		},
 		{
-			name:          "negative cells",
+			name:          "lower boundary cells",
 			subjectIndex:  10,
 			wantCandidate: 13,
 			wantDistant:   14,
@@ -285,7 +285,7 @@ func TestMeasureNearbyCandidateGridMatchesFullScan(t *testing.T) {
 	cfg.radius = 5
 
 	boids := candidateGridTestBoids()
-	grid := newSpatialGrid(cfg.radius)
+	grid := newSpatialGrid(cfg.radius, 80, 80)
 	grid.rebuild(boids)
 
 	for _, subjectIndex := range []int{0, 7, 10} {
@@ -326,7 +326,7 @@ func TestMeasureNearbyCandidateGridWithInvalidRadius(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := defaultConfig()
 			cfg.radius = tt.radius
-			grid := newSpatialGrid(tt.radius)
+			grid := newSpatialGrid(tt.radius, 80, 80)
 			grid.rebuild(boids)
 
 			for _, subject := range boids {
@@ -346,22 +346,24 @@ func TestMeasureNearbyCandidateGridWithInvalidRadius(t *testing.T) {
 }
 
 func candidateGridTestBoids() []boid {
+	const offset = 20.0
+
 	return []boid{
-		{pos: Point{x: 9.9, y: 9.9}, vel: Point{x: 1, y: 0}},      // near upper cell boundaries
-		{pos: Point{x: 14.8, y: 9.9}, vel: Point{x: 2, y: 1}},     // inside radius, adjacent x cell
-		{pos: Point{x: 9.9, y: 10.2}, vel: Point{x: 0, y: 3}},     // inside radius, adjacent y cell
-		{pos: Point{x: 13.3, y: 13.3}, vel: Point{x: -1, y: 2}},   // inside radius, diagonal cell
-		{pos: Point{x: 14.95, y: 9.9}, vel: Point{x: 9, y: 9}},    // candidate, outside radius
-		{pos: Point{x: 9.9, y: 9.9}, vel: Point{x: 4, y: 4}},      // same position excluded
-		{pos: Point{x: 30, y: 30}, vel: Point{x: 7, y: 7}},        // outside candidate cells
-		{pos: Point{x: 10, y: 10}, vel: Point{x: -2, y: -2}},      // exactly on x/y cell boundaries
-		{pos: Point{x: 5.05, y: 10}, vel: Point{x: 1, y: -1}},     // inside radius across lower x boundary
-		{pos: Point{x: 10, y: 14.95}, vel: Point{x: 2, y: -3}},    // inside radius across upper y boundary
-		{pos: Point{x: -0.1, y: -0.1}, vel: Point{x: -3, y: 1}},   // negative cell
-		{pos: Point{x: 4.8, y: -0.1}, vel: Point{x: 3, y: -1}},    // inside radius across zero x boundary
-		{pos: Point{x: -0.1, y: -5.05}, vel: Point{x: -1, y: -2}}, // inside radius across negative y boundary
-		{pos: Point{x: -5.2, y: -0.1}, vel: Point{x: -2, y: 0.5}}, // candidate, outside radius
-		{pos: Point{x: -20, y: -20}, vel: Point{x: -7, y: -7}},    // outside candidate cells
+		{pos: Point{x: 9.9 + offset, y: 9.9 + offset}, vel: Point{x: 1, y: 0}},    // near upper cell boundaries
+		{pos: Point{x: 14.8 + offset, y: 9.9 + offset}, vel: Point{x: 2, y: 1}},   // inside radius, adjacent x cell
+		{pos: Point{x: 9.9 + offset, y: 10.2 + offset}, vel: Point{x: 0, y: 3}},   // inside radius, adjacent y cell
+		{pos: Point{x: 13.3 + offset, y: 13.3 + offset}, vel: Point{x: -1, y: 2}}, // inside radius, diagonal cell
+		{pos: Point{x: 14.95 + offset, y: 9.9 + offset}, vel: Point{x: 9, y: 9}},  // candidate, outside radius
+		{pos: Point{x: 9.9 + offset, y: 9.9 + offset}, vel: Point{x: 4, y: 4}},    // same position excluded
+		{pos: Point{x: 30 + offset, y: 30 + offset}, vel: Point{x: 7, y: 7}},      // outside candidate cells
+		{pos: Point{x: 10 + offset, y: 10 + offset}, vel: Point{x: -2, y: -2}},    // exactly on x/y cell boundaries
+		{pos: Point{x: 5.05 + offset, y: 10 + offset}, vel: Point{x: 1, y: -1}},   // inside radius across lower x boundary
+		{pos: Point{x: 10 + offset, y: 14.95 + offset}, vel: Point{x: 2, y: -3}},  // inside radius across upper y boundary
+		{pos: Point{x: 19.9, y: 19.9}, vel: Point{x: -3, y: 1}},                   // boundary probe
+		{pos: Point{x: 24.8, y: 19.9}, vel: Point{x: 3, y: -1}},                   // inside radius across lower x boundary
+		{pos: Point{x: 19.9, y: 14.95}, vel: Point{x: -1, y: -2}},                 // inside radius across upper y boundary
+		{pos: Point{x: 14.8, y: 19.9}, vel: Point{x: -2, y: 0.5}},                 // candidate, outside radius
+		{pos: Point{x: 0, y: 0}, vel: Point{x: -7, y: -7}},                        // outside candidate cells
 	}
 }
 

@@ -106,7 +106,7 @@ func BenchmarkMeasureNearbyCandidateIndexes(b *testing.B) {
 		b.Run(size.name, func(b *testing.B) {
 			boids := deterministicBoids(size.width, size.height)
 			subject := boids[len(boids)/2]
-			grid := newSpatialGrid(cfg.radius)
+			grid := newSpatialGrid(cfg.radius, size.width, size.height)
 			grid.rebuild(boids)
 			candidates := grid.candidateIndexes(subject.pos, make([]int, 0, len(boids)))
 

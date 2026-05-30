@@ -15,13 +15,14 @@ type simulation struct {
 func newSimulation(cfg config) simulation {
 	return simulation{
 		cfg:        cfg,
-		nearbyGrid: newSpatialGrid(cfg.radius),
+		nearbyGrid: newSpatialGrid(cfg.radius, 0, 0),
 	}
 }
 
 func (s *simulation) Resize(width, height int) {
 	s.width = width
 	s.height = height
+	s.nearbyGrid.resize(width, height)
 	s.frames = 0
 	s.boids = initBoidsOnScreenSize(s.cfg, width, height)
 	// Keep a reusable destination buffer with matching capacity for the next frame.
@@ -30,7 +31,7 @@ func (s *simulation) Resize(width, height int) {
 
 func (s *simulation) SetConfig(cfg config) {
 	s.cfg = cfg
-	s.nearbyGrid.cellSize = cfg.radius
+	s.nearbyGrid.setCellSize(cfg.radius)
 }
 
 func (s *simulation) Step() {
@@ -49,7 +50,7 @@ func (s *simulation) Step() {
 			nextBoids[i].update(currentBoids, s.cfg)
 		}
 	} else {
-		s.nearbyGrid.cellSize = s.cfg.radius
+		s.nearbyGrid.setCellSize(s.cfg.radius)
 		s.nearbyGrid.rebuild(currentBoids)
 
 		for i := range s.boids {
