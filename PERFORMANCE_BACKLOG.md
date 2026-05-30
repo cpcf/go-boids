@@ -32,11 +32,12 @@ manual testing in the terminal.
   - Use these benchmarks to validate each larger redesign step.
   - Added `BenchmarkModelFrame` for step, draw, frame command, and `View`.
 
-- [ ] Introduce a sparse ANSI renderer.
+- [x] Introduce a sparse ANSI renderer.
   - Render only changed boid cells and status-line updates instead of rebuilding
     a full screen string every frame.
   - Preserve visible controls and status behavior.
   - Keep the implementation testable without requiring a real terminal.
+  - Added an allocation-free sparse renderer and `BenchmarkSparseANSIFrame`.
 
 - [ ] Move interactive mode off the Bubble Tea full-view render path.
   - Use the sparse renderer for terminal output.

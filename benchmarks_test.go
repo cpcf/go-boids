@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"io"
+	"testing"
+)
 
 var benchmarkSizes = []struct {
 	name          string
@@ -171,6 +174,50 @@ func BenchmarkCellbufferSparseDrawCycle(b *testing.B) {
 			b.StopTimer()
 
 			benchCountSink = len(c.dirty)
+		})
+	}
+}
+
+func BenchmarkSparseANSIFrame(b *testing.B) {
+	cfg := defaultConfig()
+	cfg.radius = 7
+	cfg.maxSpeed = 0.5
+	cfg.adjustRate = 0.025
+	cfg.alignmentRate = 1
+	cfg.cohesionRate = 1
+	cfg.separationRate = 1
+	cfg.targetMinSpeed = 0.01
+
+	statuses := []string{"status", "paused"}
+
+	for _, size := range benchmarkSizes {
+		b.Run(size.name, func(b *testing.B) {
+			var r sparseRenderer
+			r.reset(size.width, size.height)
+
+			sim := newSimulation(cfg)
+			sim.Resize(size.width, size.height)
+			sim.boids = deterministicBoids(size.width, size.height)
+			for i := 0; i < 4; i++ {
+				sim.Step()
+				if err := r.render(io.Discard, sim.Boids(), statuses[i%len(statuses)]); err != nil {
+					b.Fatalf("warm render() = %v", err)
+				}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				sim.Step()
+				status := "status"
+				if i%2 == 1 {
+					status = "paused"
+				}
+				if err := r.render(io.Discard, sim.Boids(), status); err != nil {
+					b.Fatalf("render() = %v", err)
+				}
+			}
+			benchStringSink = statuses[0]
 		})
 	}
 }
