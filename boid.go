@@ -9,7 +9,6 @@ type boid struct {
 	pos           Point
 	nextPos       Point
 	vel           Point
-	forward       Point
 	maxX, maxY    float64
 	bounce        bool
 	clampMinSpeed bool
@@ -93,9 +92,6 @@ func (b *boid) applyAcceleration(accel Point, cfg config) {
 	if !b.bounce {
 		b.wrapAroundScreen()
 	}
-
-	updateForward(b)
-
 }
 
 func (b *boid) wrapAroundScreen() {
@@ -246,8 +242,4 @@ func bounce(pos, maxBorderPos float64, cfg config) float64 {
 		return 1 / (pos - maxBorderPos)
 	}
 	return 0
-}
-
-func updateForward(b *boid) {
-	b.forward = b.vel.Normalize()
 }

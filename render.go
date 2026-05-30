@@ -114,7 +114,7 @@ func (m *model) stepAndDraw(step bool) {
 func (m *model) drawBoids() {
 	m.cells.wipe()
 	for _, boid := range m.sim.Boids() {
-		drawTriangle(&m.cells, boid.pos, boid.forward)
+		drawTriangle(&m.cells, boid.pos, boid.vel)
 	}
 }
 
@@ -125,7 +125,7 @@ func (m *model) resetSimulation() {
 }
 
 func drawTriangle(cb *cellbuffer, centre, dir Point) {
-	cb.set(int(centre.x), int(centre.y), triangleRuneTable[dir])
+	cb.set(int(centre.x), int(centre.y), triangleRune(dir))
 }
 
 func (m model) statusLine() string {
@@ -170,13 +170,41 @@ func fitStatusLine(s string, width int) string {
 	return s[:width]
 }
 
-var triangleRuneTable = map[Point]rune{
-	{-1, -1}: '◤',
-	{-1, 0}:  '◀',
-	{-1, 1}:  '◣',
-	{0, 1}:   '▼',
-	{1, 1}:   '◢',
-	{1, 0}:   '▶',
-	{1, -1}:  '◥',
-	{0, -1}:  '▲',
+func triangleRune(dir Point) rune {
+	x := triangleAxis(dir.x, dir.x*dir.x, dir.y*dir.y)
+	y := triangleAxis(dir.y, dir.y*dir.y, dir.x*dir.x)
+
+	switch {
+	case x < 0 && y < 0:
+		return '◤'
+	case x < 0 && y == 0:
+		return '◀'
+	case x < 0 && y > 0:
+		return '◣'
+	case x == 0 && y > 0:
+		return '▼'
+	case x > 0 && y > 0:
+		return '◢'
+	case x > 0 && y == 0:
+		return '▶'
+	case x > 0 && y < 0:
+		return '◥'
+	case x == 0 && y < 0:
+		return '▲'
+	default:
+		return 0
+	}
+}
+
+func triangleAxis(value, square, otherSquare float64) int {
+	if value > 0 {
+		if 3*square >= otherSquare {
+			return 1
+		}
+		return 0
+	}
+	if value < 0 && 3*square > otherSquare {
+		return -1
+	}
+	return 0
 }

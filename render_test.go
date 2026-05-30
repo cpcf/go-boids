@@ -70,7 +70,6 @@ func TestModelSingleStepOnlyWhenPaused(t *testing.T) {
 		maxY:          10,
 		bounce:        false,
 		clampMinSpeed: false,
-		forward:       Point{x: 1, y: 0},
 	}}
 
 	beforePaused := copyBoidsForTest(m.sim.Boids())
@@ -90,6 +89,63 @@ func TestModelSingleStepOnlyWhenPaused(t *testing.T) {
 	})
 	if !boidsEqualForTest(beforeRunning, m.sim.Boids()) {
 		t.Fatal("single-step should not advance simulation when not paused")
+	}
+}
+
+func TestTriangleRuneFromVelocity(t *testing.T) {
+	tests := []struct {
+		name string
+		dir  Point
+		want rune
+	}{
+		{
+			name: "diagonal positive",
+			dir:  Point{x: 3, y: 4},
+			want: '◢',
+		},
+		{
+			name: "diagonal negative",
+			dir:  Point{x: -3, y: -4},
+			want: '◤',
+		},
+		{
+			name: "horizontal",
+			dir:  Point{x: 4, y: 0},
+			want: '▶',
+		},
+		{
+			name: "horizontal negative",
+			dir:  Point{x: -7, y: 0},
+			want: '◀',
+		},
+		{
+			name: "vertical down",
+			dir:  Point{x: 0, y: 7},
+			want: '▼',
+		},
+		{
+			name: "vertical up",
+			dir:  Point{x: 0, y: -2},
+			want: '▲',
+		},
+		{
+			name: "diagonal southwest",
+			dir:  Point{x: -4, y: -5},
+			want: '◤',
+		},
+		{
+			name: "small component rounds to zero",
+			dir:  Point{x: 5, y: 1},
+			want: '▶',
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := triangleRune(tt.dir); got != tt.want {
+				t.Fatalf("triangleRune(%+v) = %c, want %c", tt.dir, got, tt.want)
+			}
+		})
 	}
 }
 

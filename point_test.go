@@ -57,38 +57,6 @@ func TestPointDistance(t *testing.T) {
 	}
 }
 
-func TestPointNormalize(t *testing.T) {
-	tests := []struct {
-		name  string
-		point Point
-		want  Point
-	}{
-		{
-			name:  "diagonal positive",
-			point: Point{x: 3, y: 4},
-			want:  Point{x: 1, y: 1},
-		},
-		{
-			name:  "axis aligned negative",
-			point: Point{x: 0, y: -2},
-			want:  Point{x: 0, y: -1},
-		},
-		{
-			name:  "small component rounds to zero",
-			point: Point{x: 5, y: 1},
-			want:  Point{x: 1, y: 0},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.point.Normalize(); got != tt.want {
-				t.Fatalf("Normalize() = %+v, want %+v", got, tt.want)
-			}
-		})
-	}
-}
-
 func near(got, want float64) bool {
 	return math.Abs(got-want) < 1e-9
 }

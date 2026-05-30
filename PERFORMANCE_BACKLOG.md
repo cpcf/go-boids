@@ -10,11 +10,11 @@ manual testing in the terminal.
   - Preserve exact neighbor filtering and existing behavior.
   - Verified with `rtk go test ./...` and focused update benchmarks.
 
-- [ ] Remove square-root/map work from render-direction selection.
+- [x] Remove square-root/map work from render-direction selection.
   - Replace direction normalization plus `map[Point]rune` lookup with a small
     direct direction calculation.
   - Preserve the visible eight-direction triangle behavior.
-  - Verify with `rtk go test ./...` and benchmarks.
+  - Verified with `rtk go test ./...` and focused benchmarks.
 
 - [ ] Revisit full-screen string rendering after simulation-side wins.
   - Investigate whether a Bubble Tea-compatible path can avoid rebuilding a

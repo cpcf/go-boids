@@ -55,12 +55,6 @@ func (point Point) magnitudeSquared() float64 {
 	return point.x*point.x + point.y*point.y
 }
 
-// Normalize returns a new point with the same direction but with a magnitude of 1
-func (p1 Point) Normalize() Point {
-	magnitude := math.Sqrt(p1.magnitudeSquared())
-	return Point{x: math.Floor(p1.x/magnitude + 0.5), y: math.Floor(p1.y/magnitude + 0.5)}
-}
-
 // Linearly interpolates between two points by a given proportion
 func (p1 Point) Lerp(p2 Point, proportion float64) Point {
 	return Point{

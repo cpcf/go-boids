@@ -158,7 +158,7 @@ func TestBoidMove(t *testing.T) {
 	}
 }
 
-func TestBoidUpdateWrapsAndUpdatesForward(t *testing.T) {
+func TestBoidUpdateWraps(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.radius = 1
 	cfg.maxSpeed = 2
@@ -177,9 +177,6 @@ func TestBoidUpdateWrapsAndUpdatesForward(t *testing.T) {
 
 	if got, want := b.nextPos, (Point{x: 0.5, y: 2}); got != want {
 		t.Fatalf("nextPos = %+v, want %+v", got, want)
-	}
-	if got, want := b.forward, (Point{x: 1, y: 0}); got != want {
-		t.Fatalf("forward = %+v, want %+v", got, want)
 	}
 }
 
