@@ -153,6 +153,28 @@ func BenchmarkCellbufferString(b *testing.B) {
 	}
 }
 
+func BenchmarkCellbufferSparseDrawCycle(b *testing.B) {
+	for _, size := range benchmarkSizes {
+		b.Run(size.name, func(b *testing.B) {
+			var c cellbuffer
+			c.init(size.width, size.height)
+			boids := deterministicBoids(size.width, size.height)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				c.wipe()
+				for _, boid := range boids {
+					c.set(int(boid.pos.x), int(boid.pos.y), triangleRune(boid.vel))
+				}
+			}
+			b.StopTimer()
+
+			benchCountSink = len(c.dirty)
+		})
+	}
+}
+
 func deterministicBoids(width, height int) []boid {
 	count := width*height/125 + 1
 	boids := make([]boid, count)

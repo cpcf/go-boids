@@ -32,6 +32,34 @@ func TestCellbufferWipe(t *testing.T) {
 	}
 }
 
+func TestCellbufferWipeFallsBackToFullClearForUntouchedCells(t *testing.T) {
+	var c cellbuffer
+	c.init(4, 1)
+	for i := range c.cells {
+		c.cells[i] = '.'
+	}
+
+	c.wipe()
+
+	if got, want := c.String(), "    "; got != want {
+		t.Fatalf("String() after fallback wipe = %q, want %q", got, want)
+	}
+}
+
+func TestCellbufferWipeClearsOnlyTrackedCells(t *testing.T) {
+	var c cellbuffer
+	c.init(5, 1)
+	c.set(1, 0, 'A')
+	c.cells[0] = 'X'
+	c.cells[4] = 'B'
+
+	c.wipe()
+
+	if got, want := c.String(), "X   B"; got != want {
+		t.Fatalf("String() after partial wipe = %q, want %q", got, want)
+	}
+}
+
 func TestCellbufferInitZeroWidthLeavesBufferUnready(t *testing.T) {
 	var c cellbuffer
 	c.init(0, 2)

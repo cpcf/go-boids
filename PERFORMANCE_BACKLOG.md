@@ -16,8 +16,10 @@ manual testing in the terminal.
   - Preserve the visible eight-direction triangle behavior.
   - Verified with `rtk go test ./...` and focused benchmarks.
 
-- [ ] Revisit full-screen string rendering after simulation-side wins.
+- [x] Revisit full-screen string rendering after simulation-side wins.
   - Investigate whether a Bubble Tea-compatible path can avoid rebuilding a
     complete screen string every frame.
   - Stop before replacing Bubble Tea unless benchmarks show rendering dominates
     after the simulation changes.
+  - Kept Bubble Tea, added sparse dirty-cell clearing, and optimized full-view
+    string construction.
