@@ -46,18 +46,19 @@ manual testing in the terminal.
   - Added a custom raw terminal loop with sparse ANSI rendering and SIGWINCH
     resize handling.
 
-- [ ] Reshape simulation state toward struct-of-arrays.
-  - Store hot boid position and velocity state in contiguous component slices.
-  - Keep behavior-compatible accessors for rendering, stats, and tests while
-    avoiding per-frame struct copies.
-
-- [ ] Double-buffer simulation state.
+- [x] Double-buffer simulation state.
   - Read from current arrays and write next positions/velocities, then swap.
   - Remove the full previous-frame boid snapshot from the hot path.
+  - Added a reusable next-frame boid buffer and swapped buffers after each step.
 
 - [ ] Make the spatial grid fixed to simulation bounds.
   - Use screen/world dimensions to size grid arrays directly.
   - Avoid recomputing observed grid bounds every frame.
+
+- [ ] Reshape simulation state toward struct-of-arrays.
+  - Store hot boid position and velocity state in contiguous component slices.
+  - Keep behavior-compatible accessors for rendering, stats, and tests while
+    avoiding per-frame struct copies.
 
 - [ ] Gate parallel stepping for large flocks.
   - Add a fixed worker split only above a measured threshold.

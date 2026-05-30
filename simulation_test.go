@@ -198,3 +198,62 @@ func TestSimulationSetConfigUpdatesConfigAndGridCellSizeWithoutReset(t *testing.
 		t.Fatal("SetConfig should not reset boids")
 	}
 }
+
+func TestSimulationStepSwapsBoidBuffers(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.radius = 0
+	cfg.maxSpeed = 10
+	cfg.adjustRate = 1
+	cfg.alignmentRate = 0
+	cfg.cohesionRate = 0
+	cfg.separationRate = 0
+	cfg.clampMinSpeed = false
+
+	sim := newSimulation(cfg)
+	sim.boids = []boid{
+		{
+			pos:           Point{x: 1, y: 1},
+			vel:           Point{x: 1, y: 0},
+			maxX:          5,
+			maxY:          5,
+			bounce:        false,
+			clampMinSpeed: false,
+		},
+		{
+			pos:           Point{x: 2, y: 2},
+			vel:           Point{x: -1, y: 0},
+			maxX:          5,
+			maxY:          5,
+			bounce:        false,
+			clampMinSpeed: false,
+		},
+	}
+
+	initialCurrentBoid0 := &sim.boids[0]
+	initialCurrentBoid1 := &sim.boids[1]
+
+	sim.Step()
+	afterFirst := sim.Boids()
+	if len(sim.nextBoids) != len(sim.boids) {
+		t.Fatalf("len(sim.nextBoids) = %d, want %d", len(sim.nextBoids), len(sim.boids))
+	}
+	if &sim.nextBoids[0] != initialCurrentBoid0 || &sim.nextBoids[1] != initialCurrentBoid1 {
+		t.Fatal("after first step, next buffer should reuse previous frame backing array")
+	}
+
+	firstCurrent := &afterFirst[0]
+	firstCurrent1 := &afterFirst[1]
+	sim.Step()
+	afterSecond := sim.Boids()
+
+	if &afterSecond[0] != initialCurrentBoid0 || &afterSecond[1] != initialCurrentBoid1 {
+		t.Fatal("after second step, current frame should have swapped back to the initial backing array")
+	}
+	if &sim.nextBoids[0] != firstCurrent || &sim.nextBoids[1] != firstCurrent1 {
+		t.Fatal("after second step, next buffer should be the buffer written by the previous step")
+	}
+
+	if afterSecond[0] == afterFirst[0] {
+		t.Fatal("positions should advance across steps")
+	}
+}
