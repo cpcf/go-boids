@@ -33,6 +33,49 @@ func TestModelSpaceTogglesPaused(t *testing.T) {
 	}
 }
 
+func TestModelHandleInputRuneReturnsQuitWithoutBubbleTeaMessage(t *testing.T) {
+	m := model{
+		cfg: defaultConfig(),
+		sim: newSimulation(defaultConfig()),
+	}
+
+	if !m.handleInputRune('q') {
+		t.Fatal("q should request quit")
+	}
+
+	if m.handleInputRune('s') {
+		t.Fatal("s should not request quit")
+	}
+	if !m.showStats {
+		t.Fatal("s should toggle stats")
+	}
+}
+
+func TestModelHandleWindowResizeInitializesState(t *testing.T) {
+	m := model{
+		cfg: defaultConfig(),
+		sim: newSimulation(defaultConfig()),
+	}
+
+	m.handleWindowResize(20, 10)
+
+	if got, want := m.cells.width(), 20; got != want {
+		t.Fatalf("cells width = %d, want %d", got, want)
+	}
+	if got, want := m.cells.height(), 9; got != want {
+		t.Fatalf("cells height = %d, want %d", got, want)
+	}
+	if got, want := m.sim.width, 20; got != want {
+		t.Fatalf("simulation width = %d, want %d", got, want)
+	}
+	if got, want := m.sim.height, 9; got != want {
+		t.Fatalf("simulation height = %d, want %d", got, want)
+	}
+	if !m.cells.ready() {
+		t.Fatal("cells should be ready after resize")
+	}
+}
+
 func TestModelFrameDoesNotStepWhenPaused(t *testing.T) {
 	m := model{
 		cfg:    defaultConfig(),

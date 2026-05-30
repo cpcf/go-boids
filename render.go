@@ -34,65 +34,95 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEsc, tea.KeyCtrlC:
-			return m, tea.Quit
-		case tea.KeyRunes:
-			if len(msg.Runes) == 1 {
-				key := msg.Runes[0]
-				switch key {
-				case 'q':
-					return m, tea.Quit
-				case 's':
-					m.showStats = !m.showStats
-					return m, nil
-				case ' ':
-					m.paused = !m.paused
-					return m, nil
-				case '.':
-					if m.paused {
-						m.stepAndDraw(true)
-					}
-					return m, nil
-				case 'r':
-					m.resetSimulation()
-					return m, nil
-				}
-
-				if adjustment, ok := runtimeAdjustmentForKey(key); ok {
-					m.cfg = applyRuntimeAdjustment(m.cfg, adjustment)
-					m.sim.SetConfig(m.cfg)
-					if m.cells.ready() {
-						m.stepAndDraw(false)
-					}
-					return m, nil
-				}
-			}
-		case tea.KeySpace:
-			m.paused = !m.paused
-			return m, nil
-		}
-		return m, nil
+		return m, m.handleKey(msg)
 	case tea.WindowSizeMsg:
-		m.cfg = loadConfig()
-		m.sim = newSimulation(m.cfg)
-		displayHeight := msg.Height - 1
-		if displayHeight < 0 {
-			displayHeight = 0
-		}
-		m.sim.Resize(msg.Width, displayHeight)
-		m.cells.init(msg.Width, displayHeight)
+		m.handleWindowResize(msg.Width, msg.Height)
 		return m, nil
 	case frameMsg:
-		if !m.cells.ready() {
-			return m, nil
-		}
-
-		m.stepAndDraw(!m.paused)
+		m.handleFrame()
 		return m, animate(m.cfg)
 	default:
 		return m, nil
 	}
+}
+
+func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
+	switch msg.Type {
+	case tea.KeyEsc, tea.KeyCtrlC:
+		return tea.Quit
+	case tea.KeySpace:
+		m.paused = !m.paused
+		return nil
+	case tea.KeyRunes:
+		if len(msg.Runes) != 1 {
+			return nil
+		}
+		return m.handleKeyRune(msg.Runes[0])
+	default:
+		return nil
+	}
+}
+
+func (m *model) handleKeyRune(key rune) tea.Cmd {
+	if m.handleInputRune(key) {
+		return tea.Quit
+	}
+	return nil
+}
+
+func (m *model) handleInputRune(key rune) bool {
+	switch key {
+	case 'q':
+		return true
+	case 's':
+		m.showStats = !m.showStats
+		return false
+	case ' ':
+		m.paused = !m.paused
+		return false
+	case '.':
+		if m.paused {
+			m.stepAndDraw(true)
+		}
+		return false
+	case 'r':
+		m.resetSimulation()
+		return false
+	}
+
+	if adjustment, ok := runtimeAdjustmentForKey(key); ok {
+		m.applyRuntimeAdjustment(adjustment)
+		return false
+	}
+
+	return false
+}
+
+func (m *model) applyRuntimeAdjustment(adjustment runtimeAdjustment) {
+	m.cfg = applyRuntimeAdjustment(m.cfg, adjustment)
+	m.sim.SetConfig(m.cfg)
+	if m.cells.ready() {
+		m.stepAndDraw(false)
+	}
+}
+
+func (m *model) handleWindowResize(width, height int) {
+	m.cfg = loadConfig()
+	m.sim = newSimulation(m.cfg)
+	displayHeight := height - 1
+	if displayHeight < 0 {
+		displayHeight = 0
+	}
+	m.sim.Resize(width, displayHeight)
+	m.cells.init(width, displayHeight)
+}
+
+func (m *model) handleFrame() {
+	if !m.cells.ready() {
+		return
+	}
+
+	m.stepAndDraw(!m.paused)
 }
 
 func (m model) View() string {
